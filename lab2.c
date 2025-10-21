@@ -12,8 +12,8 @@ void main(void) {
     // 2. GPIO SETUP
     PORTA_PCR1 = 0xA0100; // Configure Port A pin 1 for GPIO Interrupt on falling edge    
     PORTB_GPCLR = 0x000C0100; // GPIO Setup: PORTB pin 2 and 3
-    PORTC_GPCLR = // GPIO Setup: LED1 8 pins 
-    PORTD_GPCLR = // GPIO Setup: LED2 8 pins 
+    PORTC_GPCLR = 0x01BF0100 // GPIO Setup: LED1 8 pins 0,1,2,3,4,5,7
+    PORTD_GPCLR = 0x00FF0100 // GPIO Setup: LED2 8 pins 
 
     // 3. GPIO DIRECTION
     GPIOB_PDDR = // DIP Switch 
