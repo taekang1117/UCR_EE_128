@@ -6,7 +6,11 @@ PORTD is connect to the 1's LED
 #include "fsl_device_registers.h"
 #include <stdint.h>
 
+// Global Var
+volatile unit8_t counter = 0;
+volatile unit8_t clk_toggle = 0;
 unsigned short ADC_read16b(void); // For ADC_read
+
 // TO DO: Initialization 
 void main(void) {
     // 1. CLOCK GATING
@@ -49,6 +53,8 @@ void main(void) {
         if (mode_sw == 0) {
             // Mode 0 : Read Potentiometer and display
             unit16_t adc_val = ADC_read16b();
+            unit8_t display_val = adc_val * 99 / 65535; 
+            DisplayTwoDigit(display_val);
             // display adc_val to LEDs;
         } else {
             // Mode 1: Counter Mode
@@ -61,6 +67,26 @@ void main(void) {
     }
 }
 // TO DO: void PORTA_IRQHandler(void) 
+void PORTA_IRQHandler(void) {
+    if (PORTA_ISFR & (1 << CLK_PIN)) {
+        uint32_t mode_sw = (GPIOB_PDIR >> MODE_SW_PIN) & 0x1;
+        uint32_t cnt_dir = (GPIOB_PDIR >> CNT_DIR_PIN) & 0x1;
 
+        // Toggle decimal point each tick
+        clk_toggle ^= 1;
+        ToggleDecimalPoint(clk_toggle);
+
+        if (mode_sw == 1) { // Counter mode
+            if (cnt_dir == 0) {
+                counter = (counter + 1) % 100;
+            } else {
+                counter = (counter == 0) ? 99 : counter - 1;
+            }
+            DisplayTwoDigit(counter);
+        }
+
+        PORTA_ISFR = (1 << CLK_PIN); // Clear interrupt flag
+    }
+}
 // TO DO: Interrupt Code
 
