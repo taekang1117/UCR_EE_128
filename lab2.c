@@ -16,15 +16,18 @@ void main(void) {
     PORTD_GPCLR = 0x00FF0100 // GPIO Setup: LED2 8 pins 
 
     // 3. GPIO DIRECTION
-    GPIOB_PDDR = // DIP Switch 
-    GPIOC_PDDR = // LED1
-    GPIOD_PDDR = // LED2
+    GPIOB_PDDR = 0x00000000// DIP Switch 
+    GPIOC_PDDR = 0x000001BF// LED1
+    GPIOD_PDDR = 0x000000FF// LED2
 
 
     PORTA_ISFR = (1<<1); // Clear ISFR for Port A pin 1
     NVIC_EnableIRQ(PORTA_IRQn); // Enable Port A interrupt in
 
-    unit32_t inval = 0;
+    // 4. High Low
+    GPIOB_PDOR = 0x0000000C; // Set Pins 2 and 3 on Port B to be high voltage
+    GPIOC_PDOR = 0x00000000; // Set Pins 0-5, 7-8 on Port C to be low voltage
+    GPIOD_PDOR = 0x000000FF; // Set Pins 0-7 on Port D to be low voltage
     
  // TO DO: Main code loop
 
