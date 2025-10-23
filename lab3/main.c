@@ -22,7 +22,7 @@ int numsPTD[10] = {0b1111110, // 0
     0b1111011, // 9
     };
 
-int numsPTC[10] = {0xBE, // 0
+int numsPTC[10] = {0b10111110, // 0
 	    0x30, // 1
 	    0xBD, // 2
 	    0xB9, // 3
