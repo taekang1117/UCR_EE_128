@@ -153,7 +153,7 @@ int main(void) {
     //PORTA_ISFR = (1<<1);
 
     //display_2digit(0);
-    GPIOC_PDOR |= 0x000001BF;   // drive HIGH -> ON
+    GPIOC_PDOR |= 0x00000FFF;   // drive HIGH -> ON
     GPIOD_PDOR |= 0x0000007F;
     volatile int val = 0;
     while (1) {
