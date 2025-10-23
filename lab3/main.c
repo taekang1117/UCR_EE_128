@@ -10,28 +10,28 @@ void software_delay(unsigned long delay) {
     while (delay > 0) delay--;
 }
 
-int numsPTD[10] = {0b0111111, // 0
-    0b0000110, // 1
-    0b1011011, // 2
-    0b1001111, // 3
-    0b1100110, // 4
-    0b1101101, // 5
-    0b1111101, // 6
-    0b0000111, // 7
+int numsPTD[10] = {0b1111110, // 0
+    0b0110000, // 1
+    0b1101101, // 2
+    0b1111001, // 3
+    0b0110011, // 4
+    0b1011011, // 5
+    0b1011111, // 6
+    0b1110000, // 7
     0b1111111, // 8
-    0b1101111, // 9
+    0b1111011, // 9
     };
 
 int numsPTC[10] = {0xBE, // 0
-    0x30, // 1
-    0xBD, // 2
-    0xB9, // 3
-    0x33, // 4
-    0x9B, // 5
-    0x1F, // 6
-    0xB0, // 7
-    0xBF, // 8
-    0xB3, // 9
+	    0x30, // 1
+	    0xBD, // 2
+	    0xB9, // 3
+	    0x33, // 4
+	    0x9B, // 5
+	    0x1F, // 6
+	    0xB0, // 7
+	    0xBF, // 8
+	    0xB3, // 9
     };
 
   //TODO: complete outNum()
@@ -43,7 +43,7 @@ void outNumPTD(int num) {
 	GPIOD_PDOR = (~numsPTD[num]) & 0x000000FF;
 }
 
-static inline void display_2digit(uint8_t val) {
+volatile static inline void display_2digit(uint8_t val) {
     uint8_t ones = (uint8_t)(val % 10u);
     uint8_t tens = (uint8_t)(val / 10u);
     outNumPTC(tens);
@@ -127,37 +127,40 @@ int main(void) {
 
     PORTA_GPCLR = (0x0100 << 16) | 0x0002;   // PTA1 as GPIO + (later set IRQC in PCR)
     PORTB_GPCLR = (0x0100 << 16) | 0x000C;   // PTB2-3 GPIO
-    PORTC_GPCLR = 0x00BF0100;   // PTC0-5,7 GPIO
-    PORTD_GPCLR = 0x00FF0100;   // PTD0-7 GPIO  (need DP bit too!)
+    PORTC_GPCLR = 0x01BF0100;   // PTC0-5,7 GPIO
+    PORTD_GPCLR = 0x007F0100;   // PTD0-7 GPIO  (need DP bit too!)
 
     SIM_SCGC6 |= SIM_SCGC6_ADC0_MASK;
 
 
     GPIOA_PDDR = 0x00000000;    /* Configures Pins 1 and 3 of port A as Input */
     GPIOB_PDDR = 0x00000000;    /* Configures Pins 2 and 3 of port B as Input */
-    GPIOC_PDDR = 0x000000BF;    /* Configures Pins 0-5, 7 on Port C as Output */
-    GPIOD_PDDR = 0x000000FF;    /* Configures Pins 0-6 on Port D as Output */
+    GPIOC_PDDR = 0x000001BF;    /* Configures Pins 0-5, 7 on Port C as Output */
+    GPIOD_PDDR = 0x0000007F;    /* Configures Pins 0-6 on Port D as Output */
 
 
     GPIOA_PDOR = 0x0000000A;    /* Set Pins 1 and 3 on Port A to be high voltage */
     GPIOB_PDOR = 0x0000000C;    /* Set Pins 2 and 3 on Port B to be high voltage */
-    GPIOC_PDOR &= ~(0x000000BF);		//set to high
-    GPIOD_PDOR &= ~(0x000000FF);		//set to high
+    GPIOC_PDOR &= ~(0x000001BF);		//set to high
+    GPIOD_PDOR &= ~(0x0000007F);		//set to high
 
-    unsigned long Delay = 0x00100;
+    unsigned long Delay = 0x0010;
 
     ADC0_CFG1 = 0x0C;
     ADC0_SC1A = 0x1F;
 
-    PORTA_PCR1 = PORT_PCR_MUX(1) | PORT_PCR_IRQC(0xA); // falling-edge
-    PORTA_ISFR = (1<<1);
+    //PORTA_PCR1 = PORT_PCR_MUX(1) | PORT_PCR_IRQC(0xA); // falling-edge
+    //PORTA_ISFR = (1<<1);
 
     //display_2digit(0);
-    GPIOC_PDOR |= 0x000000BF;   // drive HIGH -> ON
-    GPIOD_PDOR |= 0x000000FF;
+    GPIOC_PDOR |= 0x000001BF;   // drive HIGH -> ON
+    GPIOD_PDOR |= 0x0000007F;
+    volatile int val = 0;
     while (1) {
-
-		if ((GPIOB_PDIR & CNT_DIR) != 0) {
+    	GPIOC_PCOR = 0xBE; // clears output on PortD[0:7]
+    	GPIOC_PSOR = (unsigned int)numsPTC[val];
+    	val = (val+1) %10;
+		/*if ((GPIOB_PDIR & CNT_DIR) != 0) {
 			// count down 99 -> 0
 			if (cnt == 0)
 				cnt = 99;
@@ -168,9 +171,10 @@ int main(void) {
 			if (cnt == 99) cnt = 0;
 			else
 				cnt++;
-		}
+		}*/
 
         software_delay(Delay);
     }
     return 0;
 }
+
