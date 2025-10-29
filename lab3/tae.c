@@ -7,37 +7,40 @@ void software_delay(unsigned long delay) {
     while (delay > 0) delay--;
 }
 
-int numsPTD[10] = {0b0111111, // 0
-    0b0000110, // 1
-    0b1011011, // 2
-    0b1001111, // 3 
-    0b1100110, // 4
-    0b1101101, // 5
-    0b1111101, // 6
-    0b0000111, // 7
+int numsPTD[10] = {
+    0b1111110, // 0
+    0b0110000, // 1
+    0b1101101, // 2
+    0b1111001, // 3
+    0b0110011, // 4
+    0b1011011, // 5
+    0b1011111, // 6
+    0b1110000, // 7
     0b1111111, // 8
-    0b1101111, // 9
+    0b1111011, // 9
     }; 
 
-int numsPTC[10] = {0b00111111, // 0
-    0b00000110, // 1
-    0b10011011, // 2
-    0b10001111, // 3 
-    0b10100110, // 4
-    0b10101101, // 5
-    0b10111101, // 6
-    0b00000111, // 7
-    0b10111111, // 8
-    0b10101111, // 9
+int numsPTC[10] = {
+    0b010111110, // 0 done
+    0b000110000, // 1 done
+    0b010101101, // 2 done
+    0b010111001, // 3 done
+    0b000110011, // 4 done
+    0b100011011, // 5
+    0b000011111, // 6
+    0b100110000, // 7
+    0b000111111, // 8
+    0b000110011, // 9
     }; 
   
   //TODO: complete outNum()
 void outNumPTC(int num){
-    GPIOC_PDOR = numsPTC[num];
+    // GPIOC_PDOR = numsPTC[num];
+    GPIOC_PDOR = (~numsPTC[num]) & 0x000000BF; // Output register
 }
 
 void outNumPTD(int num) {
-    GPIOD_PDOR = numsPTD[num];
+    GPIOD_PDOR = (~numsPTD[num]) & 0x000003BF;
 }
 
 
@@ -147,4 +150,5 @@ void main(void) {
         software_delay(Delay);
     }
 }
+
 
