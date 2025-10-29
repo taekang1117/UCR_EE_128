@@ -37,11 +37,11 @@ int numsPTC[10] = {
 
   //TODO: complete outNum()
 void outNumPTC(int num){
-	GPIOC_PDOR = (~numsPTC[num]) & 0x000000BF;
+	GPIOC_PDOR = (~numsPTC[num]) & 0x000000BF; // Output register
 }
 
 void outNumPTD(int num) {
-	GPIOD_PDOR = (~numsPTD[num]) & 0x000000FF;
+	GPIOD_PDOR = (~numsPTD[num]) & 0x000003BF;
 }
 
 volatile static inline void display_2digit(uint8_t val) {
@@ -59,9 +59,9 @@ volatile static inline void display_2digit(uint8_t val) {
 // }
 
 unsigned short ADC_read16b(void){
-    ADC0_SC1A = 0x00;                              // SE channel 0
-    while (ADC0_SC2 & ADC_SC2_ADACT_MASK) {}       // wait active
-    while (!(ADC0_SC1A & ADC_SC1_COCO_MASK)) {}    // wait done
+    ADC0_SC1A = 0x1A;                              // from lecture slides
+    while (ADC0_SC2 & ADC_SC2_ADACT_MASK);       // from lecture slides
+    while (!(ADC0_SC1A & ADC_SC1_COCO_MASK));    // from lecture slides
     return ADC0_RA;
 }
 
