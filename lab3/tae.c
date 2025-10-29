@@ -121,25 +121,24 @@ void main(void) {
 
     PORTA_GPCLR = (0x0100 << 16) | 0x0002;   // PTA1 as GPIO + (later set IRQC in PCR)
     PORTB_GPCLR = (0x0100 << 16) | 0x000C;   // PTB2-3 GPIO
-    PORTC_GPCLR = (0x0100 << 16) | 0x005F;   // PTC0-5,7 GPIO
-    PORTD_GPCLR = (0x0100 << 16) | 0x00FF;   // PTD0-7 GPIO  (need DP bit too!)
+    PORTC_GPCLR = 0x01BF0100;   // PTC0-5,7 GPIO
+    PORTD_GPCLR = 0x007F0100;   // PTD0-7 GPIO  (need DP bit too!)
 
     SIM_SCGC6 |= SIM_SCGC6_ADC0_MASK;
 
 
     GPIOA_PDDR = 0x00000000;    /* Configures Pins 1 and 3 of port A as Input */
     GPIOB_PDDR = 0x00000000;    /* Configures Pins 2 and 3 of port B as Input */
-    GPIOC_PDDR = 0x0000005F;    /* Configures Pins 0-5, 7 on Port C as Output */
-    GPIOD_PDDR = 0x0000007F;    /* Configures Pins 0-6 on Port D as Output */
-
+    GPIOC_PDDR = 0x000001BF;    /* Configures Pins 0-5, 7 on Port C as Output */
+    GPIOD_PDDR = 0x000000FF;    /* Configures Pins 0-6 on Port D as Output */
 
     GPIOA_PDOR = 0x0000000A;    /* Set Pins 1 and 3 on Port A to be high voltage */
     GPIOB_PDOR = 0x0000000C;    /* Set Pins 2 and 3 on Port B to be high voltage */
-    GPIOC_PDOR = 0x00000000;    /* Set Pins 0-5, 7 on Port C to be low voltage */
-    GPIOD_PDOR = 0x00000000;    /* Set Pins 0-6 on Port D to be low voltage */
+    GPIOC_PDOR &= ~(0x000001BF);		//set to high
+    GPIOD_PDOR &= ~(0x0000007F);		//set to high
 
 
-    unsigned long Delay = 0x100000;
+    unsigned long Delay = 0x0010;
 
     ADC0_CFG1 = 0x0C;
     ADC0_SC1A = 0x1F;
@@ -150,5 +149,6 @@ void main(void) {
         software_delay(Delay);
     }
 }
+
 
 
