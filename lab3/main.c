@@ -1,181 +1,169 @@
 #include "fsl_device_registers.h"
-#include <stdint.h>
 
-#define MODE_SW   (1u << 2)   // PB2 (unused in this test)
-#define CNT_DIR   (1u << 3)   // PB3: 0 = up, 1 = down
 
-volatile unsigned int cnt = 0;
-
-void software_delay(unsigned long delay) {
-    while (delay > 0) delay--;
+long map(unsigned int x, long min1, long max1, long min2, long max2)
+{
+    return (x - min1) * (max2 - min2) / (max1 - min1) + min2;
 }
 
-int numsPTD[10] = {0b1111110, // 0
-    0b0110000, // 1
-    0b1101101, // 2
-    0b1111001, // 3
-    0b0110011, // 4
-    0b1011011, // 5
-    0b1011111, // 6
-    0b1110000, // 7
-    0b1111111, // 8
-    0b1111011, // 9
-    };
 
-int numsPTC[10] = {
-		0b010111110, // 0 done
-	    0b000110000, // 1 done
-	    0b010101101, // 2 done
-	    0b010111001, // 3 done
-	    0b000110011, // 4 done
-	    0b100011011, // 5
-	    0b000011111, // 6
-	    0b100110000, // 7
-	    0b000111111, // 8
-	    0b000110011, // 9
-    };
+int nums[10] = {0b1111110, // 0
+0b0110000, // 1
+0b1101101, // 2
+0b1111001, // 3
+0b0110011, // 4
+0b1011011, // 5
+0b1011111, // 6
+0b1110000, // 7
+0b1111111, // 8
+0b1111011, // 9
+};
 
-  //TODO: complete outNum()
-void outNumPTC(int num){
-	GPIOC_PDOR = (~numsPTC[num]) & 0x000000BF; // Output register
+
+unsigned short ADC_read16b(void)
+{
+ADC0_SC1A = 0x00; //Write to SC1A to start conversion from ADC_0
+ while(ADC0_SC2 & 0x80); // Conversion in progress
+ while(!(ADC0_SC1A & 0x80)); // Until conversion complete
+ return ADC0_RA;
 }
 
-void outNumPTD(int num) {
-	GPIOD_PDOR = (~numsPTD[num]) & 0x000003BF;
-}
 
-volatile static inline void display_2digit(uint8_t val) {
-    uint8_t ones = (uint8_t)(val % 10u);
-    uint8_t tens = (uint8_t)(val / 10u);
-    outNumPTC(tens);
-    outNumPTD(ones);
-}
+int cnt = 0;
+int sigFig = 0;
 
-// unsigned short ADC_read16b(void) {
-//     ADC0_SC1A = 0x1A;
-//     while (ADC0_SC2 & ADC_SC2_ADACT_MASK);
-//     while (!(ADC0_SC1A & ADC_SC1_COCO_MASK));
-//     return ADC0_RA;
-// }
 
-unsigned short ADC_read16b(void){
-    ADC0_SC1A = 0x1A;                              // from lecture slides
-    while (ADC0_SC2 & ADC_SC2_ADACT_MASK);       // from lecture slides
-    while (!(ADC0_SC1A & ADC_SC1_COCO_MASK));    // from lecture slides
-    return ADC0_RA;
-}
+int data;
+int adcValue;
+int tensPlace;
+int onesPlace;
 
-/*void PORTA_IRQHandler(void) {
-    // Toggle ones place decimal point;
+
+void PORTA_IRQHandler(void)
+{
+	GPIOC_PTOR = (1 << 9);  //GPIOC_PDOR = (~GPIOC_PDOR & 0x0200); // Swap decimal point.
     NVIC_ClearPendingIRQ(PORTA_IRQn);
-    GPIOD_PTOR |= 0xFF;
+            if ((GPIOB_PDIR & 0x04) == (1 << 2)) // Check if DIP switch 1 is ON
+            {
 
-    // Read Port B
-    const uint32_t MODE_SW = 0x4;
-    const uint32_t CNT_DIR = 0x8;
+                sigFig = cnt / 10; // Calculate the value of the tens position.
+                onesPlace = cnt % 10;
+                GPIOD_PDOR = (GPIOD_PDOR & ~0xFF) | (nums[onesPlace] & 0xFF); // Update displays with value.
+                GPIOC_PDOR = (nums[sigFig] & 0x3F) | ((nums[sigFig] & 0xC0) << 1);
+                if ((GPIOB_PDIR & 0x08) == (1 << 3)) // Check if DIP switch 1 is on.
+                {
 
-    if (GPIOB_PDIR & MODE_SW) {
-        // ADC_read()
-        unsigned short voltageNum = ADC_read16b();
-        unsigned short firstDigit = voltageNum % 10;
-        unsigned short secondDigit = (voltageNum - firstDigit) / 10;
-        outNumPTC(firstDigit);
-        outNumPTD(secondDigit);
-    }
-    // Read from ADC and convert to decimal value; (e.g., ADC reads 0xFF, voltage is 1.6)
-    if(!(GPIOB_PDIR & MODE_SW)) {
-        if (!(GPIOB_PDIR & CNT_DIR)) {
-            if (cnt < 99) {
-                cnt ++;
+
+                    if (cnt == 99) // If i is not max, then increment.
+                    {
+                        cnt = 0;
+                    }
+                    else
+                    {
+                    cnt++;
+                    }
+                }
+                else
+                {
+                    if (cnt == 0) // If i is not 0, then decrement.
+                    {
+                        cnt = 99;
+                    }
+                    else
+                    {
+                    cnt--;
+                    }
+                }
+
+
+
+
             }
-            else {
-                cnt = 0;
+            else
+            {
+                data = ADC_read16b(); // Read value of potentiometer.
+                adcValue = map(data, 0, 65536, 0, 99); // Map value to a range of 0 - 99.
+                tensPlace = adcValue / 10; // Calculate the ones and tens places, and update the displays accordingly.
+                onesPlace = (adcValue - tensPlace * 10);
+                GPIOD_PDOR = (GPIOD_PDOR & ~0xFF) | (nums[onesPlace] & 0xFF);
+                GPIOC_PDOR = (nums[tensPlace] & 0x3F) | ((nums[tensPlace] & 0xC0) << 1);
             }
-        }
-        else if (GPIOB_PDIR & CNT_DIR) {
-            if (cnt > 0) {
-                cnt--;
-            }
-            else {
-                cnt = 99;
-            }
-        }
-        unsigned short firstDigit = cnt % 10;
-        unsigned short secondDigit = (cnt - firstDigit) / 10;
-        outNumPTC(firstDigit);
-        outNumPTD(secondDigit);
-    }
-
-    //Display ADC value or Counter value based on MODE_SW; /* PORT C and D to seven segments
-    // 29 % 10 = 9. PTC
-    // (29 - (29 % 10)) / 10 = 2. PTD
-    //Clear ISFR
-    PORTA_ISFR = (1 << 1);
-}*/
-
-
-int main(void) {
-    SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK;  /* Enable Port A Clock Gate Control*/
-    SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;  /* Enable Port B Clock Gate Control*/
-    SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;  /* Enable Port C Clock Gate Control*/
-    SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK;  /* Enable Port D Clock Gate Control*/
-
-
-    // PORTA_GPCLR = 0x000A0100;   /* Configures Pins 1 and 3 on Port A to be GPIO */
-    // PORTB_GPCLR = 0x000C0100;   /* Configures Pins 2 and 3 on Port B to be GPIO */
-    // PORTC_GPCLR = 0x005F0100;   /* Configures Pins 0-5, 7 on Port C to be GPIO */
-    // PORTD_GPCLR = 0x007F0100;   /* Configures Pins 0-6 on Port D to be GPIO */
-
-    PORTA_GPCLR = (0x0100 << 16) | 0x0002;   // PTA1 as GPIO + (later set IRQC in PCR)
-    PORTB_GPCLR = (0x0100 << 16) | 0x000C;   // PTB2-3 GPIO
-    PORTC_GPCLR = 0x01BF0100;   // PTC0-5,7 GPIO
-    PORTD_GPCLR = 0x007F0100;   // PTD0-7 GPIO  (need DP bit too!)
-
-    SIM_SCGC6 |= SIM_SCGC6_ADC0_MASK;
-
-
-    GPIOA_PDDR = 0x00000000;    /* Configures Pins 1 and 3 of port A as Input */
-    GPIOB_PDDR = 0x00000000;    /* Configures Pins 2 and 3 of port B as Input */
-    GPIOC_PDDR = 0x000001BF;    /* Configures Pins 0-5, 7 on Port C as Output */
-    GPIOD_PDDR = 0x0000007F;    /* Configures Pins 0-6 on Port D as Output */
-
-
-    GPIOA_PDOR = 0x0000000A;    /* Set Pins 1 and 3 on Port A to be high voltage */
-    GPIOB_PDOR = 0x0000000C;    /* Set Pins 2 and 3 on Port B to be high voltage */
-    GPIOC_PDOR &= ~(0x000001BF);		//set to high
-    GPIOD_PDOR &= ~(0x0000007F);		//set to high
-
-    unsigned long Delay = 0x0010;
-
-    ADC0_CFG1 = 0x0C;
-    ADC0_SC1A = 0x1F;
-
-    //PORTA_PCR1 = PORT_PCR_MUX(1) | PORT_PCR_IRQC(0xA); // falling-edge
-    //PORTA_ISFR = (1<<1);
-
-    //display_2digit(0);
-    GPIOC_PDOR |= 0x00000FFF;   // drive HIGH -> ON
-    GPIOD_PDOR |= 0x0000007F;
-    volatile int val = 0;
-    while (1) {
-    	GPIOC_PCOR = 0xBE; // clears output on PortD[0:7]
-    	GPIOC_PSOR = (unsigned int)numsPTC[val];
-    	val = (val+1) %10;
-		/*if ((GPIOB_PDIR & CNT_DIR) != 0) {
-			// count down 99 -> 0
-			if (cnt == 0)
-				cnt = 99;
-			else
-				cnt--;
-		} else {
-			// count up 0 -> 99
-			if (cnt == 99) cnt = 0;
-			else
-				cnt++;
-		}*/
-
-        software_delay(Delay);
-    }
-    return 0;
+        PORTA_ISFR = (1 << 1);
 }
 
+
+int main(void)
+{
+    SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK; /*Enable Port D Clock Gate Control*/
+    SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK; /*Enable Port C Clock Gate Control*/
+    SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK;
+    SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK; /*Enable Port A Clock Gate Control*/
+    SIM_SCGC6 |= SIM_SCGC6_ADC0_MASK; // 0x8000000u; Enable ADC0 Clock
+
+
+    PORTA_PCR1 = 0xA0100; /* Configure PORTA[1] for GPIO & Interrupt on Falling-Edge */
+    PORTA_ISFR = (1 << 1); /* Clear ISFR for PORTA, Pin 1*/
+
+
+
+    // Initialize PORT D as GPIO
+    PORTD_PCR0 = 0x100;
+    PORTD_PCR1 = 0x100;
+    PORTD_PCR2 = 0x100;
+    PORTD_PCR3 = 0x100;
+    PORTD_PCR4 = 0x100;
+    PORTD_PCR5 = 0x100;
+    PORTD_PCR6 = 0x100;
+    PORTD_PCR7 = 0x100;
+
+
+    // Initialize PORT C as GPIO
+    PORTC_PCR0 = 0x100;
+    PORTC_PCR1 = 0x100;
+    PORTC_PCR2 = 0x100;
+    PORTC_PCR3 = 0x100;
+    PORTC_PCR4 = 0x100;
+    PORTC_PCR5 = 0x100;
+    PORTC_PCR7 = 0x100;
+    PORTC_PCR8 = 0x100;
+    PORTC_PCR9 = 0x100;
+
+
+    // Initialize PORT A as GPIO
+    PORTB_PCR2 = 0x100;
+    PORTB_PCR3 = 0x100;
+
+
+    // Initialize PORT B GPIO as Input
+    GPIOB_PDDR &= ~(1 << 2);
+    GPIOB_PDDR &= ~(1 << 3);
+
+
+    // Initialize PORT D GPIO as Output
+    GPIOD_PDDR |= (1 << 7); /* SETTING 0-7 port D output */
+	GPIOD_PDDR |= (1 << 6);
+	GPIOD_PDDR |= (1 << 5);
+	GPIOD_PDDR |= (1 << 4);
+	GPIOD_PDDR |= (1 << 3);
+	GPIOD_PDDR |= (1 << 2);
+	GPIOD_PDDR |= (1 << 1);
+	GPIOD_PDDR |= (1 << 0);
+
+	GPIOC_PDDR |= (1<<0); /*setting port C 0-5 and 7-8 for output */
+	GPIOC_PDDR |= (1<<1);
+	GPIOC_PDDR |= (1<<2);
+	GPIOC_PDDR |= (1<<3);
+	GPIOC_PDDR |= (1<<4);
+	GPIOC_PDDR |= (1<<5);
+	GPIOC_PDDR |= (1<<7);
+	GPIOC_PDDR |= (1<<8);
+	GPIOC_PDDR |= (1<<9);
+
+
+
+    ADC0_CFG1 = 0x0C; // 16bits ADC; Bus Clock
+    ADC0_SC1A = 0x1F; // Disable the module during init, ADCH = 11111
+    NVIC_EnableIRQ(PORTA_IRQn); /* Enable interrupts from PORTA */
+
+    while(1);
+    }
