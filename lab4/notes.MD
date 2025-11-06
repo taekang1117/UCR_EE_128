@@ -71,8 +71,18 @@ We will use 0xFFFF for simplicity -> `FTM3_MOD = 0xFFFF;`
 * How often does the timer counter (FTMx_CNT) overflow? <br>  47.6 nsec * 65536 = 3.12 msec
 
 This may be too fast for our purpose. So we scale down the timer clock speed by dividing the clock source
-with the *prescale factor*
+with the **prescale factor**
 
+# FTMx_SC [2:0] (Prescale factor)
+The **prescale factor** for the main timer is selected by `FTMx_SC[2:0]`
 
+000 Divide by 1
+001 Divide by 2
+010 Divide by 4
+011 Divide by 8
+100 Divide by 16
+101 Divide by 32
+110 Divide by 64
+111 Divide by 128
 
 
