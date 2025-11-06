@@ -76,6 +76,7 @@ with the **prescale factor**
 # FTMx_SC [2:0] (Prescale factor)
 The **prescale factor** for the main timer is selected by `FTMx_SC[2:0]`
 
+
 000 Divide by 1 <br>
 001 Divide by 2 <br>
 010 Divide by 4 <br>
@@ -85,4 +86,16 @@ The **prescale factor** for the main timer is selected by `FTMx_SC[2:0]`
 110 Divide by 64 <br>
 111 Divide by 128
 
+# Ex1. Reading timer counter
+```
+unsigned int timer_val;
+
+SIM_SCGC3 |= SIM_SCGC3_FTM3_MASK; // FTM3 clock gating on
+FTM3_MODE = 0x5; // Enable FTM3
+FTM3_MOD = 0xFFFF; // Max counter value
+// Set prescale factor and clock source (FTMx_SC[4:0])
+FTM3_SC = 0x0F; // 0x0F => b01111 => system clock / 128 
+
+timer_val = FTM3_CNT; // Get current counter value 
+```
 
