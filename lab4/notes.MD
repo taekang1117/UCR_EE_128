@@ -44,8 +44,9 @@ SIM_SCGC3 |= SIM_SCGC3_FTM3_MASK;
 ```
 
 ## Enable FTM (FTMx_MODE)
-<p> To enable FTM, FTMx_MODE bit 0 needs to be set. <br>
-* FTMx_MODE has a write protection flag in Bit 2  (default is 1: write protection disabled) </p>
+To enable FTM, FTMx_MODE bit 0 needs to be set. <br>
+* FTMx_MODE has a write protection flag in Bit 2  (default is 1: write protection disabled) 
+
 ```
 FTM3_MODE = 0x5; // Enable FTM3 & Disable WR Protection
 FTM3_MODE |= 0x1; // Enable FTM3
