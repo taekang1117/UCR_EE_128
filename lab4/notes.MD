@@ -1,5 +1,4 @@
 # Enable Timer Counter
-Steps
 1. Configure clock gating for the appropriate FTM
 2. Enable the FTM
 3. Set the timer counter limit
