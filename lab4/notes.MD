@@ -110,7 +110,7 @@ B. It stops counting  <br>
 C. It sends a reset signal to MCU <br>
 D. It wraps back to 0 and set an overflow flag <br>
 
-The ANS is D. <br>
+The answer is D. <br>
 A 16-bit hardware timer can count values from `0` to `65535 (0xFFFF)` <br>
 When it reaches its maximum value and increments one more time: 
 The counter overflows. 
