@@ -99,3 +99,6 @@ FTM3_SC = 0x0F; // 0x0F => b01111 => system clock / 128
 timer_val = FTM3_CNT; // Get current counter value 
 ```
 
+# Overflow
+Sets overflow flag when count reaches the maximum value <br>
+* can generate interrupt on counter overflow `FTMx_CNT`
