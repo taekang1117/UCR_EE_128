@@ -21,7 +21,7 @@ CnV: Channel compare value (defines duty cycle or trigger point)
 STATUS: Flags for events (e.g., overflow, channel match)
 
 
-# FTMx_CNT (Timer Counter)
+# FTMx_CNT [15:0] (Timer Counter)
 16 bit non stop hardware counter. Up to 0xFFFF (Must be enabled first)
 ```
 unsigned int cnt;
@@ -56,7 +56,7 @@ FTM3_MODE |= 0x1; // Enable FTM3
 * FTMx_MOD: Modulo register -> Maximum counter value
 We will use 0xFFFF for simplicity -> `FTM3_MOD = 0xFFFF;`
 
-# FTMx_SC (Timer Clock Source)
+# FTMx_SC [4:3] (Timer Clock Source)
 * The FlexTimer moudle can have various clock sources, but we will be using the system clock (default 20MHz)
 * To select this we can configure `FTMx_SC[4:3]`
 
@@ -64,6 +64,15 @@ We will use 0xFFFF for simplicity -> `FTM3_MOD = 0xFFFF;`
 01 System clock
 10 Fixed frequency clock
 11 External clock
+
+## Prescaler
+* FRDM K64F system clock speed: 21MHz by default
+* 1 clock cycle = 1 second / 21 MHz = 47.6 nsec
+* How often does the timer counter (FTMx_CNT) overflow?
+- 47.6 nsec * 65536 = 3.12 msec
+
+This may be too fast for our purpose. So we scale down the timer clock speed by dividing the clock source
+with the *prescale factor*
 
 
 
