@@ -52,6 +52,19 @@ FTM3_MODE = 0x5; // Enable FTM3 & Disable WR Protection
 FTM3_MODE |= 0x1; // Enable FTM3
 ```
 
+## Set Counter Limit
+* FTMx_MOD: Modulo register -> Maximum counter value
+We will use 0xFFFF for simplicity -> FTM3_MOD = 0xFFFF;
+
+## Timer Clock Source
+* The FlexTimer moudle can have various clock sources, but we will be using the system clock (default 20MHz)
+* To select this we can configure 'FTMx_SC[4:3]'
+
+00 No clock selected. This in effect disables the FTM counter
+01 System clock
+10 Fixed frequency clock
+11 External clock
+
 
 
 
