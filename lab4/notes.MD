@@ -68,8 +68,7 @@ We will use 0xFFFF for simplicity -> `FTM3_MOD = 0xFFFF;`
 ## Prescaler
 * FRDM K64F system clock speed: 21MHz by default
 * 1 clock cycle = 1 second / 21 MHz = 47.6 nsec
-* How often does the timer counter (FTMx_CNT) overflow?
-- 47.6 nsec * 65536 = 3.12 msec
+* How often does the timer counter (FTMx_CNT) overflow? <br>  47.6 nsec * 65536 = 3.12 msec
 
 This may be too fast for our purpose. So we scale down the timer clock speed by dividing the clock source
 with the *prescale factor*
