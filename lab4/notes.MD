@@ -21,7 +21,7 @@ CnV: Channel compare value (defines duty cycle or trigger point)
 STATUS: Flags for events (e.g., overflow, channel match)
 
 
-## Timer Counter (FTMx_CNT)
+# FTMx_CNT (Timer Counter)
 16 bit non stop hardware counter. Up to 0xFFFF (Must be enabled first)
 ```
 unsigned int cnt;
@@ -43,7 +43,7 @@ SIM_SCGC3 |= SIM_SCGC3_FTM3_MASK;
 // Enable FTM3
 ```
 
-## Enable FTM (FTMx_MODE)
+# FTMx_MODE (Enable FTM)
 To enable FTM, FTMx_MODE bit 0 needs to be set. <br>
 * FTMx_MODE has a write protection flag in Bit 2  (default is 1: write protection disabled) 
 
@@ -52,11 +52,11 @@ FTM3_MODE = 0x5; // Enable FTM3 & Disable WR Protection
 FTM3_MODE |= 0x1; // Enable FTM3
 ```
 
-## Set Counter Limit
+# FTMx_MOD (Set Counter Limit)
 * FTMx_MOD: Modulo register -> Maximum counter value
 We will use 0xFFFF for simplicity -> `FTM3_MOD = 0xFFFF;`
 
-## Timer Clock Source
+# FTMx_SC (Timer Clock Source)
 * The FlexTimer moudle can have various clock sources, but we will be using the system clock (default 20MHz)
 * To select this we can configure `FTMx_SC[4:3]`
 
