@@ -12,7 +12,7 @@ CnV: Channel compare value (defines duty cycle or trigger point)
 STATUS: Flags for events (e.g., overflow, channel match)
 
 
-# Timer Counter (FTMx_CNT)
+### Timer Counter (FTMx_CNT)
 16 bit non stop hardware counter. Up to 0xFFFF (Must be enabled first)
 ```
 unsigned int cnt;
@@ -29,7 +29,7 @@ Steps
 * Clock gating configuration
 * To enable the FTM, we need to configure FTMx_MODE[2:0]
 
-# FTM Clock Gating
+## FTM Clock Gating
 * FTM0, FTM1, FTM2 -> SIM_SCGC6
 ```
 // Example
@@ -42,5 +42,10 @@ SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK; // Enable FTM0
 SIM_SCGC3 |= SIM_SCGC3_FTM3_MASK;
 // Enable FTM3
 ```
+
+## Enable FTM (FTMx_MODE)
+<p> To enable FTM, FTMx_MODE bit 0 needs to be set. <br>
+FTMx_MODE has a write protection flag in Bit 2 <br>
+(default is 1: write protection disabled) </p>
 
 
