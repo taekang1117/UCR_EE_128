@@ -76,13 +76,13 @@ with the **prescale factor**
 # FTMx_SC [2:0] (Prescale factor)
 The **prescale factor** for the main timer is selected by `FTMx_SC[2:0]`
 
-000 Divide by 1
-001 Divide by 2
-010 Divide by 4
-011 Divide by 8
-100 Divide by 16
-101 Divide by 32
-110 Divide by 64
+000 Divide by 1 <br>
+001 Divide by 2 <br>
+010 Divide by 4 <br>
+011 Divide by 8 <br>
+100 Divide by 16 <br>
+101 Divide by 32 <br>
+110 Divide by 64 <br>
 111 Divide by 128
 
 
