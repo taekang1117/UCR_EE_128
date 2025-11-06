@@ -68,13 +68,20 @@ We will use 0xFFFF for simplicity -> `FTM3_MOD = 0xFFFF;`
 ## Prescaler
 * FRDM K64F system clock speed: 21MHz by default
 * 1 clock cycle = 1 second / 21 MHz = 47.6 nsec
-* How often does the timer counter (FTMx_CNT) overflow? <br>  47.6 nsec * 65536 = 3.12 msec
+* How often does the timer counter (FTMx_CNT) overflow? <br>  47.6 nsec * 65536 (0xFFFF) = 3.12 msec
 
-This may be too fast for our purpose. So we scale down the timer clock speed by dividing the clock source
-with the **prescale factor**
+This may be too fast for our purpose. So we scale down the timer clock speed by dividing the clock source with the **prescale factor**
 
 # FTMx_SC [2:0] (Prescale factor)
 The **prescale factor** for the main timer is selected by `FTMx_SC[2:0]`
+
+Given 21 MHz bus clock: 
+`FTMx_SC[2:0] = b111; `
+
+1 clock cycle = 1 sec / (21 MHz / 128) = 6.1 micro sec <br>
+Overflow period = 6.1 micro sec * 65536 (0xFFFF) = 400 msec
+
+We can slow down the input clock to capture slower events 
 
 
 000 Divide by 1 <br>
@@ -118,3 +125,13 @@ The counter overflows.
 * The overflow flag (TOF or similar) in the timer status register is set to 1.
 * This flag can trigger an interrupt if the overflow interrupt is enabled.
 * This mechanism lets the MCU know that the timer has completed a full cycle, which is often used for timekeeping, PWM generation, or event measurement.
+
+### Discussion Question2
+Why do many micrcontrollers use 16-bit timers instead of 32 bit timers?
+A. 16-bit counters consume less chip area and hardware resources, helping reduce cost and power consumption. <br>
+B. They are faster to update and more efficient for real-time tasks that only need short time intervals. <br>
+C. Many timing applications (like PWM or pulse measurement) only require microsecond-level precision, which 16-bit countes easily provide with a prescaler. <br>
+D. Overflow handling allows software to extend the timer range when needed, making 16bit timers flexible. <br>
+E. A 32-bit timer would offer unnecessary resolution and range for most embedded control tasks, increasing complexity without much benefit. <br>
+F. All of the above are valid reasons. 
+
