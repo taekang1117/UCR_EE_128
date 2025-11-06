@@ -7,7 +7,7 @@
 * To enable the FTM, we need to configure FTMx_MODE[2:0]
 
 
-# Key Registers 
+## Key Registers 
 SC: Set clock source, prescaler, overflow interrupt
 
 CNT: Current counter value
