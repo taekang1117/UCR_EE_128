@@ -22,10 +22,10 @@ FTM0_CNT = 0; // reset counter
 
 # Enable Timer Counter
 Steps
-1. Configure clock gating for the appropriate FTM
-2. Enable the FTM
-3. Set the timer counter limit
-4. Choose clock source and prescaler 
+#1. Configure clock gating for the appropriate FTM
+#2. Enable the FTM
+#3. Set the timer counter limit
+#4. Choose clock source and prescaler 
 * Clock gating configuration
 * To enable the FTM, we need to configure FTMx_MODE[2:0]
 
