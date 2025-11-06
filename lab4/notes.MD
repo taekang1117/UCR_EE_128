@@ -26,4 +26,8 @@ Steps
 2. Enable the FTM
 3. Set the timer counter limit
 4. Choose clock source and prescaler 
+* Clock gating configuration
+* To enable the FTM, we need to configure FTMx_MODE[2:0]
+
+
 
