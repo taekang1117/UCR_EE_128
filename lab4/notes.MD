@@ -11,6 +11,6 @@ CnV: Channel compare value (defines duty cycle or trigger point)
 
 STATUS: Flags for events (e.g., overflow, channel match)
 
-## Timer Counter
+## Timer Counter (FTMx_CNT)
 16 bit non stop hardware counter. Up to 0xFFFF (Must be enabled first)
 
