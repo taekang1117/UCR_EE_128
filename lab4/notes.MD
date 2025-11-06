@@ -29,5 +29,18 @@ Steps
 * Clock gating configuration
 * To enable the FTM, we need to configure FTMx_MODE[2:0]
 
+# FTM Clock Gating
+* FTM0, FTM1, FTM2 -> SIM_SCGC6
+```
+// Example
+SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK; // Enable FTM0
+```
+
+* FTM2, FTM3 -> SIM_SCGC3
+```
+// Example
+SIM_SCGC3 |= SIM_SCGC3_FTM3_MASK;
+// Enable FTM3
+```
 
 
