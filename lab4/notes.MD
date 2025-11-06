@@ -102,3 +102,19 @@ timer_val = FTM3_CNT; // Get current counter value
 # Overflow
 Sets overflow flag when count reaches the maximum value <br>
 * can generate interrupt on counter overflow `FTMx_CNT`
+
+### Discussion Question 1
+What happens when a 16-bit hardware timer counter overflows? <br>
+A. It clears all other registers <br>
+B. It stops counting  <br>
+C. It sends a reset signal to MCU <br>
+D. It wraps back to 0 and set an overflow flag <br>
+
+The ANS is D. <br>
+A 16-bit hardware timer can count values from `0` to `65535 (0xFFFF)` <br>
+When it reaches its maximum value and increments one more time: 
+The counter overflows. 
+* It resets back to 0 automatically (wrap-around behavior).
+* The overflow flag (TOF or similar) in the timer status register is set to 1.
+* This flag can trigger an interrupt if the overflow interrupt is enabled.
+* This mechanism lets the MCU know that the timer has completed a full cycle, which is often used for timekeeping, PWM generation, or event measurement.
