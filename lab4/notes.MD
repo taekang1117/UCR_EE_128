@@ -136,3 +136,19 @@ E. A 32-bit timer would offer unnecessary resolution and range for most embedded
 F. All of the above are valid reasons. <br>
 
 The answer is F, All of the above
+
+# FlexTimer Module
+Eight channels of multiplexed input-capture and output compare functions. <br>
+* Input capture: When a specific event happens, records the timer counter value at that time. 
+* Output compare: Triggers an output at a specific time in the future. 
+
+## When to use it
+* Even arrival time recording (to compare for different events)
+* Period measurement: By capturing timer values corresponding to two consecutive rising or falling edges. 
+* Pulse width measurement: timer values at the rising and falling edges 
+* Duty Cycle Measurement: duty cycle = delta T / T * 100%
+* Phase difference measurement: phase difference = delta T / T * 360 degree
+* Event counting: by counting the number of signal edges arrived during a period
+* Time reference: often used in combination with an output compare function 
+
+
