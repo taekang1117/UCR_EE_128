@@ -127,11 +127,12 @@ The counter overflows.
 * This mechanism lets the MCU know that the timer has completed a full cycle, which is often used for timekeeping, PWM generation, or event measurement.
 
 ### Discussion Question2
-Why do many micrcontrollers use 16-bit timers instead of 32 bit timers?
+Why do many micrcontrollers use 16-bit timers instead of 32 bit timers? <br>
 A. 16-bit counters consume less chip area and hardware resources, helping reduce cost and power consumption. <br>
 B. They are faster to update and more efficient for real-time tasks that only need short time intervals. <br>
 C. Many timing applications (like PWM or pulse measurement) only require microsecond-level precision, which 16-bit countes easily provide with a prescaler. <br>
 D. Overflow handling allows software to extend the timer range when needed, making 16bit timers flexible. <br>
 E. A 32-bit timer would offer unnecessary resolution and range for most embedded control tasks, increasing complexity without much benefit. <br>
-F. All of the above are valid reasons. 
+F. All of the above are valid reasons. <br>
 
+The answer is F, All of the above
