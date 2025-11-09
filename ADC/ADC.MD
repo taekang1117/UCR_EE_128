@@ -1,17 +1,17 @@
 # Analog to Digital Conversion
-### Transducer 
+## Transducer 
 Converts a non-electric quantity to an electronic quantity (voltage)
 * Temperature sensor: temperature -> voltage
 * microphone: sound pressure -> voltage
 
-### A/D Converter
+## A/D Converter
 Only deals with electric voltage 
 * Converts analog quantity (voltage) to digital format
 
 ## N-bit A/D Converter
-* Takes snapshots of the voltage at regular time intervals (**sampling**) 
-* Only $2^n$ distinct levels (e.g., 8-bit -> 256 levels) 
-* More bits = finer steps = more precise
+- Takes snapshots of the voltage at regular time intervals (**sampling**) 
+- Only $2^n$ distinct levels (e.g., 8-bit -> 256 levels) 
+- More bits = finer steps = more precise
 
 ## ADC Precision
 - The number of **distinguishable** ADC inputs
@@ -21,4 +21,5 @@ Only deals with electric voltage
 - The smallest distinguishable change in input
 - E.g., 12-bit ADC with a range of 0 to 5V -> $$\frac{5V}{4096-1} = 1.2mV$$
 
-
+## Average ADC Conversion Error 
+$\frac{1}{2}$ of resolution: $$\frac{{V_RH}-{V_RL}}{{2^n}-1}}$$
