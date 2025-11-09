@@ -19,6 +19,6 @@ Only deals with electric voltage
 
 ## ADC Resolution
 - The smallest distinguishable change in input
-- E.g., 12-bit ADC with a range of 0 to 5V -> $$ \frac{5V}{4096-1} = 1.2 mV $$
+- E.g., 12-bit ADC with a range of 0 to 5V -> $$\frac{5}{4096-1} = 1.2$$
 
 
