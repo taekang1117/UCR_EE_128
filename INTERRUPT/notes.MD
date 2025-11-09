@@ -176,6 +176,6 @@ Two levels of interrupt enabling/disabling
 ### Local interrupt masking
 - Disables all maskable interrupt source
 - Each interrupt source (e.g., GPIO port, timer, etc) has an interrupt enable/disable flag <br>
-- In KDS: 
+- In KDS: <br>
 `NVIC_DisableIRQ(IRQn);` <br>
 `NVIC_EnableIRQ(IRQn);`
