@@ -39,3 +39,22 @@ while(1) {
 
 ## I/O Handling with Interrupts
 * An I/O pin requires a prompt reseponse from the CPU when an event occurs, even when the CPU is busy running a program. 
+
+## Discussion Question 1
+<Which of the following best describes the ***sequence*** of actions that occur when a GPIO interrupt is triggered?> 
+
+A. ISR runs immediately, then the CPU saves context <brk>
+B. The CPU finishes the main program before checking the interrupt <brk>
+C. The ISR replaces the current program permanently <brk>
+D. CPU saves context, jumps to ISR, executes ISR, restores context, resumes main program. 
+
+>> The correct answer is ***D***
+
+### When a GPIO interrupt occurs:
+1. CPU saves context - it automatically stores critical registers (like PC, status registersm, etc), so it can resume later <brk>
+2. Jumps to ISR (Interrupt Service Routine) - hardware redirects program flow to the ISR's address. <brk>
+3. Executes ISR - the ISR handles the interrupt (e.g., reads GPIO flag, clears it, etc). <brk>
+4. Restores context - CPU pops saved registers back <brk>
+5. Resumes main program exactly where it left off 
+
+***A*** is wrong because the CPU saves context **before** running the ISR, otherwise it would lose its current execution state. 
