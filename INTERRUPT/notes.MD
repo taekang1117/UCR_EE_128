@@ -6,13 +6,10 @@
 # Outline
 ## Interrupts
 - Interrupt handling sequence
-
 ## Interrupt vector
 - How does the system know where to go when an interrupt occurs?
-
 ## Coretex-M Nested Vector Interrupt Controller (NVIC)
 - How to handle multiple concurrent interrupts?
-
 ## Polling vs. Interrupt
 - Code examples
 
