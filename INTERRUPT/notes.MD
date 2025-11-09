@@ -4,16 +4,16 @@
 * MCU jumps into an interrupt handler, reads ADC once, checks the value, and reacts
 
 # Outline
-## Interrupts
+### Interrupts
 - Interrupt handling sequence
-## Interrupt vector
+### Interrupt vector
 - How does the system know where to go when an interrupt occurs?
-## Coretex-M Nested Vector Interrupt Controller (NVIC)
+### Coretex-M Nested Vector Interrupt Controller (NVIC)
 - How to handle multiple concurrent interrupts?
-## Polling vs. Interrupt
+### Polling vs. Interrupt
 - Code examples
 
-### Polling 
+## Polling 
 **Polling**: Periodically checking to see if something is ready 
 - e.g., waiting for switch input 
 
