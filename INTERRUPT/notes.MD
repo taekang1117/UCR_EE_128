@@ -58,3 +58,15 @@ D. CPU saves context, jumps to ISR, executes ISR, restores context, resumes main
 5. Resumes main program exactly where it left off 
 
 ***A*** is wrong because the CPU saves context **before** running the ISR, otherwise it would lose its current execution state. 
+
+## Interrupt Vector Table
+The interrupt vector table is a lookup table stored in memory that tells the CPU which ISR function to execute for each specific interupt event. 
+
+* The ***interrupt vector table*** is a special region in memory that the processor checks when an interrupt happens 
+* It contains a list of addresses - one for each possible interrupt source
+* Each entry in this table is called an interrupt vector 
+
+| **Interrupt Source**         | **Vector Address** | **ISR Function**      | | ---------------------------- | ------------------ | --------------------- | | Reset                        | `0x00000004`       | `Reset_Handler()`     | | NMI (Non-Maskable Interrupt) | `0x00000008`       | `NMI_Handler()`       | | Hard Fault                   | `0x0000000C`       | `HardFault_Handler()` | | GPIO Port A                  | `0x00000010`       | `PORTA_IRQHandler()`  | | Timer Overflow               | `0x00000014`       | `Timer_ISR()`         | | ADC Conversion Done          | `0x00000018`       | `ADC_ISR()`           | 
+
+
+
