@@ -11,4 +11,8 @@ Only deals with electric voltage
 ## N-bit A/D Converter
 * Takes snapshots of the voltage at regular time intervals (**sampling**) 
 * Only $2^n$ distinct levels (e.g., 8-bit -> 256 levels) 
+* More bits = finer steps = more precise
 
+## ADC Precision
+- The number of **distinguishable** ADC inputs
+- E.g., 12-bit A/D converter -> 4096 ($2^{12}$ distinguishable inputs 
