@@ -22,4 +22,4 @@ Only deals with electric voltage
 - E.g., 12-bit ADC with a range of 0 to 5V -> $$\frac{5V}{4096-1} = 1.2mV$$
 
 ## Average ADC Conversion Error 
-$\frac{1}{2}$ of resolution: $$\frac{{V_RH}-{V_RL}}{{2^n}-1}}$$
+$E = \frac{\dfrac{V_{RH} - V_{RL}}{2^{n} - 1}}{2}$
