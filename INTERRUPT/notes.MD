@@ -41,7 +41,7 @@ while(1) {
 * An I/O pin requires a prompt reseponse from the CPU when an event occurs, even when the CPU is busy running a program. 
 
 ## Discussion Question 1
-<Which of the following best describes the ***sequence*** of actions that occur when a GPIO interrupt is triggered?> 
+Which of the following best describes the ***sequence*** of actions that occur when a GPIO interrupt is triggered?
 
 A. ISR runs immediately, then the CPU saves context <br>
 B. The CPU finishes the main program before checking the interrupt <br>
@@ -83,5 +83,14 @@ B. Because the vector table is stored in ROM <br>
 C. So the CPU can locate the correct ISR immediately when an interrupt occurs <br>
 D. Because the compiler generates it at a fixed location 
 
-> I think the answer is A. 
+> The correct answer is ***C*** <br>
+So the CPU can locate the ISR immediately when an interrupt occurs 
+
+* When an interrupt is triggered, the CPU needs to know exactly where to look for the ISR address. 
+* The hardware doesn't search or scan memory - it simply goes to a predefined location (like`0x00000000`), where the interrupt vector table begins 
+
+*** Why not A
+> The key reason for a fixed address is hardware accessibility, not protection
+
+
 
