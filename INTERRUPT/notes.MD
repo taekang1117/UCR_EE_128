@@ -193,3 +193,12 @@ If the vector table weren't initialized, no interrupts would work. <br>
 GPIO interrupts can overlap. That's the whole point of interrupt priority and nesting. 
 
 > Cortex-M support ***nested interrupts***, where a higher-priority interrupt can preempt a lower-priority one. 
+
+# NVIC (Nested Vectored Interrupt Controller)
+Registers related to the interrupt of Cortex-M processors are usually inside the NVIC and System Control Block.
+- manages and prioritizes external interrupts for Cortex-M4 <br>
+- supports up to 240 IRQs <br>
+- Programmable priority levels 
+
+
+
