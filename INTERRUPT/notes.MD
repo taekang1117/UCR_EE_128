@@ -43,9 +43,9 @@ while(1) {
 ## Discussion Question 1
 <Which of the following best describes the ***sequence*** of actions that occur when a GPIO interrupt is triggered?> 
 
-A. ISR runs immediately, then the CPU saves context <brk>
-B. The CPU finishes the main program before checking the interrupt <brk>
-C. The ISR replaces the current program permanently <brk>
+A. ISR runs immediately, then the CPU saves context </brk>
+B. The CPU finishes the main program before checking the interrupt </brk>
+C. The ISR replaces the current program permanently </brk>
 D. CPU saves context, jumps to ISR, executes ISR, restores context, resumes main program. 
 
 > The correct answer is ***D***
