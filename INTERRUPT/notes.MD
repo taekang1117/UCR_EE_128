@@ -4,7 +4,7 @@
 * MCU jumps into an interrupt handler, reads ADC once, checks the value, and reacts
 
 # Outline
-* Interrupts
+## Interrupts
 - Interrupt handling sequence
 
 ## Interrupt vector
