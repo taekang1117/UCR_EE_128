@@ -75,6 +75,13 @@ The interrupt vector table is a lookup table stored in memory that tells the CPU
 | Timer Overflow               | `0x00000014`       | `Timer_ISR()`         |
 | ADC Conversion Done          | `0x00000018`       | `ADC_ISR()`           |
 
+## Discussion Question 2
+Why does the interrupt vector table need to be located at a fixed memory address (like address 0x0000_0000 in Cortext-M)? 
 
+A. To protect the vector table from being modified <br>
+B. Because the vector table is stored in ROM <br>
+C. So the CPU can locate the correct ISR immediately when an interrupt occurs <br>
+D. Because the compiler generates it at a fixed location 
 
+> I think the answer is A. 
 
