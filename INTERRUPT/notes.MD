@@ -20,7 +20,7 @@
 **Polling**: Periodically checking to see if something is ready 
 - e.g., waiting for switch input 
 
-'''
+```
 while(1) {
   outval = 0;
   inval = GPIOB_PDIR & 0x0C;
@@ -29,7 +29,7 @@ while(1) {
   GPIOD_PDOR = outval; 
   }
 }
-'''
+```
 
 ### Drawbacks
 - Need to continually check (difficult to weave checks into complex code
