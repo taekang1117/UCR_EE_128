@@ -48,7 +48,7 @@ B. The CPU finishes the main program before checking the interrupt <brk>
 C. The ISR replaces the current program permanently <brk>
 D. CPU saves context, jumps to ISR, executes ISR, restores context, resumes main program. 
 
->> The correct answer is ***D***
+> The correct answer is ***D***
 
 ### When a GPIO interrupt occurs:
 1. CPU saves context - it automatically stores critical registers (like PC, status registersm, etc), so it can resume later <brk>
