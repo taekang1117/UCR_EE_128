@@ -141,5 +141,12 @@ This means: <br>
 3. The CPU pauses the main program, saves context, and jumps to the interrupt service routine (ISR)
 4. When the ISR finishes, it returns to the main program as if nothing happened
 
-| **Concept**      | **Function Call**                                 | **Hardware Interrupt**                                                                          | | ---------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- | | **Trigger**      | Called explicitly in code                         | Triggered automatically by hardware or external events                                          | | **Timing**       | Synchronous — part of normal program flow         | Asynchronous — can occur at any time                                                            | | **Control**      | Software-controlled                               | Hardware-controlled                                                                             | | **CPU Behavior** | Jumps to a known function within the program flow | Saves context, jumps to ISR (Interrupt Service Routine), then restores and resumes main program | | **Example**      | `myFunction();`                                   | GPIO pin change, timer overflow, ADC conversion complete                                        | 
+| **Concept**      | **Function Call**                                 | **Hardware Interrupt**                                                                          |
+| ---------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Trigger**      | Called explicitly in code                         | Triggered automatically by hardware or external events                                          |
+| **Timing**       | Synchronous — part of normal program flow         | Asynchronous — can occur at any time                                                            |
+| **Control**      | Software-controlled                               | Hardware-controlled                                                                             |
+| **CPU Behavior** | Jumps to a known function within the program flow | Saves context, jumps to ISR (Interrupt Service Routine), then restores and resumes main program |
+| **Example**      | `myFunction();`                                   | GPIO pin change, timer overflow, ADC conversion complete                                        |
+
 
