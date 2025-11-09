@@ -1,9 +1,9 @@
 # Interrupts
-* MCU can "sleeP" or run other tasks 
+* MCU can "sleep" or run other tasks 
 * An interrupt is triggered when drop below a threshold
 * MCU jumps into an interrupt handler, reads ADC once, checks the value, and reacts
 
-## Outline
+# Outline
 * Interrupts
 - Interrupt handling sequence
 
