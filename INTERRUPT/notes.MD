@@ -114,5 +114,32 @@ if YES, <br>
 3. Execute ISR
 4. Restore Context 
 
+## Interrupt Context Saving/Restoring
+* Entering Interrupt Service Routine (ISR) 
+K64F saves eight registers on entry of interrupt 
 
+* Returning from ISR
+Restores CPU registers from stack <br>
+Makes K64F continue to execute the interrupted program unless there is another pending interrupt 
+
+## Discussion Question 3
+What makes hardware interrupts fundamentally different from function calls or software loops in a running program? <br>
+A. Interrupts are triggered by user input only <br>
+B. Interrupts execute only during initialization <br>
+C. Interrupts are event-driven and can occur asynchronously, outside of the program flow <br>
+D. Function calls and interrupts are handled indntically by the CPU
+
+> Correct answer is C
+
+### Explanation
+* Function calls are synchronous - they happen only when your program tells them to 
+* ***Interrupts***, however, are ***asynchronous*** - they can happen at any time, triggered by an external or internal hardware event (like a timer overflow, GPIO pin change, UART receive, ADC complete, etc) 
+
+This means: <br>
+1. The CPU can be running any part of the main program
+2. A hardware event (interrupt) occurs, 
+3. The CPU pauses the main program, saves context, and jumps to the interrupt service routine (ISR)
+4. When the ISR finishes, it returns to the main program as if nothing happened
+
+| **Concept**      | **Function Call**                                 | **Hardware Interrupt**                                                                          | | ---------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- | | **Trigger**      | Called explicitly in code                         | Triggered automatically by hardware or external events                                          | | **Timing**       | Synchronous — part of normal program flow         | Asynchronous — can occur at any time                                                            | | **Control**      | Software-controlled                               | Hardware-controlled                                                                             | | **CPU Behavior** | Jumps to a known function within the program flow | Saves context, jumps to ISR (Interrupt Service Routine), then restores and resumes main program | | **Example**      | `myFunction();`                                   | GPIO pin change, timer overflow, ADC conversion complete                                        | 
 
