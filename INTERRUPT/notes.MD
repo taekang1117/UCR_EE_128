@@ -179,3 +179,16 @@ Two levels of interrupt enabling/disabling
 - In KDS: <br>
 `NVIC_DisableIRQ(IRQn);` <br>
 `NVIC_EnableIRQ(IRQn);`
+
+## Discussion Question 4
+You have multiple GPIO interrupts enabled, but one of them seems to never run when two interrupts occur at nearly the same time. Which is the most likely cause? <br>
+A. The vector table was not initialized <br>
+B. That ISR is not declared as static <br>
+C. The interrupt is being masked or has a lower priority in the NVIC <br>
+D. GPIO interrupts cannot overlap 
+
+> Correct answer is C 
+If the vector table weren't initialized, no interrupts would work. <br>
+GPIO interrupts can overlap. That's the whole point of interrupt priority and nesting. 
+
+> Cortex-M support ***nested interrupts***, where a higher-priority interrupt can preempt a lower-priority one. 
