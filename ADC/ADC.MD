@@ -10,5 +10,5 @@ Only deals with electric voltage
 
 ## N-bit A/D Converter
 * Takes snapshots of the voltage at regular time intervals (**sampling**) 
-* Only $\2^n$ distinct levels (e.g., 8-bit -> 256 levels) 
+* Only $/2^n$ distinct levels (e.g., 8-bit -> 256 levels) 
 
