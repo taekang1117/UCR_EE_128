@@ -15,4 +15,10 @@ Only deals with electric voltage
 
 ## ADC Precision
 - The number of **distinguishable** ADC inputs
-- E.g., 12-bit A/D converter -> 4096 ($2^{12}$ distinguishable inputs 
+- E.g., 12-bit A/D converter -> 4096 ($2^{12}$) distinguishable inputs 
+
+## ADC Resolution
+- The smallest distinguishable change in input
+- E.g., 12-bit ADC with a range of 0 to 5V -> $$ \frac{5V}{4096-1} = 1.2 mV $$
+
+
