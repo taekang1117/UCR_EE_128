@@ -100,7 +100,19 @@ So the CPU can locate the ISR immediately when an interrupt occurs
 5. Restores execution state
 
 ## Instruction 'Fetch-Execute' Cycle
+For every instruction, <br>
+1. fetch instruction at PC (program counter)
+2. decode the fetched instruction
+3. execute the decoder instruction
+4. advance PC to next instruction 
+> Interrupt? 
 
+if NO, repeat <br>
+if YES, <br>
+1. Save context
+2. Find ISR (from intr vector)
+3. Execute ISR
+4. Restore Context 
 
 
 
