@@ -89,8 +89,18 @@ So the CPU can locate the ISR immediately when an interrupt occurs
 * When an interrupt is triggered, the CPU needs to know exactly where to look for the ISR address. 
 * The hardware doesn't search or scan memory - it simply goes to a predefined location (like`0x00000000`), where the interrupt vector table begins 
 
-*** Why not A
+### Why not A
 > The key reason for a fixed address is hardware accessibility, not protection
+
+## Interrupt Processing Sequence
+1. Hardware needs service
+2. Saves execution state
+3. CPU jumps to a particular interrupt service routine (ISR)
+4. ISR provides service
+5. Restores execution state
+
+## Instruction 'Fetch-Execute' Cycle
+
 
 
 
