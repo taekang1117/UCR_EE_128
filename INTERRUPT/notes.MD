@@ -187,7 +187,8 @@ B. That ISR is not declared as static <br>
 C. The interrupt is being masked or has a lower priority in the NVIC <br>
 D. GPIO interrupts cannot overlap 
 
-> Correct answer is C 
+> Correct answer is C <br>
+
 If the vector table weren't initialized, no interrupts would work. <br>
 GPIO interrupts can overlap. That's the whole point of interrupt priority and nesting. 
 
