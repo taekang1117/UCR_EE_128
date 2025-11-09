@@ -164,3 +164,18 @@ This means: <br>
 * Interrupts that **cannot** be ignored or disabled
 * Used for critical events (e.g., hardware faults)
 * On K64: reset, NMI pin
+
+## Enable/Disable Interrupts
+Two levels of interrupt enabling/disabling
+### Global interrupt masking
+- Disables all *maskable* interrupts
+- In KDS: <br>
+`_disabled_irq();` <br>
+`_enable_irq();` 
+
+### Local interrupt masking
+- Disables all maskable interrupt source
+- Each interrupt source (e.g., GPIO port, timer, etc) has an interrupt enable/disable flag <br>
+- In KDS: 
+`NVIC_DisableIRQ(IRQn);` <br>
+`NVIC_EnableIRQ(IRQn);`
