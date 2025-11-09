@@ -1,8 +1,3 @@
-# Interrupts
-* MCU can "sleep" or run other tasks 
-* An interrupt is triggered when drop below a threshold
-* MCU jumps into an interrupt handler, reads ADC once, checks the value, and reacts
-
 # Outline
 ### Interrupts
 - Interrupt handling sequence
@@ -12,6 +7,11 @@
 - How to handle multiple concurrent interrupts?
 ### Polling vs. Interrupt
 - Code examples
+
+## Interrupts
+* MCU can "sleep" or run other tasks 
+* An interrupt is triggered when drop below a threshold
+* MCU jumps into an interrupt handler, reads ADC once, checks the value, and reacts
 
 ## Polling 
 **Polling**: Periodically checking to see if something is ready 
