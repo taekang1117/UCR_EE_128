@@ -150,3 +150,17 @@ This means: <br>
 | **Example**      | `myFunction();`                                   | GPIO pin change, timer overflow, ADC conversion complete                                        |
 
 
+# Interrupt Priority
+* Each input has a priority
+* If there are **multiple pending interrupts**, their priorities determine which one to service first. 
+
+## Interrupt Maskability 
+### Maskable interrupts
+* Interrupts that **can** be ignored by the CPU if they are disabled (masked)
+* Must be enabled when you want them to trigger
+* Should be disabled they are not allowed to interrupt
+
+### Non-maskable interrupts
+* Interrupts that **cannot** be ignored or disabled
+* Used for critical events (e.g., hardware faults)
+* On K64: reset, NMI pin
