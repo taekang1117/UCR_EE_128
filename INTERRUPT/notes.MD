@@ -66,7 +66,15 @@ The interrupt vector table is a lookup table stored in memory that tells the CPU
 * It contains a list of addresses - one for each possible interrupt source
 * Each entry in this table is called an interrupt vector 
 
-| **Interrupt Source**         | **Vector Address** | **ISR Function**      | | ---------------------------- | ------------------ | --------------------- | | Reset                        | `0x00000004`       | `Reset_Handler()`     | | NMI (Non-Maskable Interrupt) | `0x00000008`       | `NMI_Handler()`       | | Hard Fault                   | `0x0000000C`       | `HardFault_Handler()` | | GPIO Port A                  | `0x00000010`       | `PORTA_IRQHandler()`  | | Timer Overflow               | `0x00000014`       | `Timer_ISR()`         | | ADC Conversion Done          | `0x00000018`       | `ADC_ISR()`           | 
+| **Interrupt Source**         | **Vector Address** | **ISR Function**      |
+| ---------------------------- | ------------------ | --------------------- |
+| Reset                        | `0x00000004`       | `Reset_Handler()`     |
+| NMI (Non-Maskable Interrupt) | `0x00000008`       | `NMI_Handler()`       |
+| Hard Fault                   | `0x0000000C`       | `HardFault_Handler()` |
+| GPIO Port A                  | `0x00000010`       | `PORTA_IRQHandler()`  |
+| Timer Overflow               | `0x00000014`       | `Timer_ISR()`         |
+| ADC Conversion Done          | `0x00000018`       | `ADC_ISR()`           |
+
 
 
 
