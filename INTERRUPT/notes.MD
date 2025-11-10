@@ -273,12 +273,12 @@ Each GPIO Port <br>
   * includes connection of external inputs to NVIC
 ## PORTx_PCRn 
 Pin Control Register (one per pin; 32 per port) <br>
+Bits [19:16] configure pin interrupt <br>
 - ***Each register*** corresponds to an input pin
 
 ## PORTx_ISFR 
 Interrupt Status Flag Register (one per port)
 - ***Each bit*** corresponds to an input pin
 - Bit is set to 1 if an interrupt has been detected
-
 
 
