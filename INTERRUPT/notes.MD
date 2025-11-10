@@ -248,3 +248,18 @@ __STATIC_INLINE void NVIC_EnableIRQ(IRQn_Type IRQn)
 | `(IRQn >> 5)` | Divides IRQ number by 32 -> selects which ISER register to use. <br> (Because each ISER has 32 bits). |
 | `(IRQn & 0x1F)` | Takes the reaminder (IRQ number % 32) -> selects which bit within that ISER to set |
 | `1UL << (...)` | Creates a bit mask to set that specific bit to 1 |
+
+# NVIC Registers and State
+## Enable/disable interrupts
+- Two registers (set bits for interrutps)
+| Registers | C Code (CMSIS) | Description | 
+|:---------------|:------------------------|:----------------------|
+| NVIC_ISER | NVIC_EnableIRQ(IRQn) | Enable interrupt |
+| NVIC_ICER | NVIC_DisableIRQ(IRQn) | Disable interrupt |
+
+## Pending Interrupt
+- Requrested but is not yet serviced
+| Registers | C Code (CMSIS) | Description | 
+|:---------------|:------------------------|:----------------------|
+| NVIC_ISPR | NVIC_SetPendingIRQ(IRQn) | Set pending |
+| NVIC_ICPR | NVIC_ClearPendingIRQ(IRQn) | Clear pending |
