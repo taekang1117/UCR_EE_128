@@ -267,3 +267,6 @@ __STATIC_INLINE void NVIC_EnableIRQ(IRQn_Type IRQn)
 | NVIC_ICPR | NVIC_ClearPendingIRQ(IRQn) | Clear pending |
 
 # Interrupts for GPIO Pins
+* MCU shall react immediately when sth happens at an input pin <br>
+* Each GPIO Port
+••••* Up to 32 pins
