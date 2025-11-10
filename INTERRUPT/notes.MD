@@ -195,6 +195,11 @@ GPIO interrupts can overlap. That's the whole point of interrupt priority and ne
 > Cortex-M support ***nested interrupts***, where a higher-priority interrupt can preempt a lower-priority one. 
 
 # NVIC (Nested Vectored Interrupt Controller)
+The NVIC manages enabling, disabling, and prioritizing interrupts in ARM Cortex MCUs. <br>
+CMSIS (Cortex Microcontroller Software Interface Standard) provides high-level C functions that interact with the NVIC registers, instead of requiring you to manually modify them. <br>
+
+`NVIC_EnableIRQ(PORTA_IRQn);  /* Enable the PORTA Pin interrupts */`
+
 Registers related to the interrupt of Cortex-M processors are usually inside the NVIC and System Control Block.
 - manages and prioritizes external interrupts for Cortex-M4 <br>
 - supports up to 240 IRQs <br>
@@ -222,7 +227,12 @@ CMSIS: Cortex Microcontroller Software Interface Standard
 
 
 # NVIC CMSIS Functions
-Example 
+IRQ numbers are defined in MK64F12.h <br>
+Example <br>
 ```
 NVIC_EnablerIRQ(PORTA_IRQn); // Enable the PORTA pin interrupts 
 ```
+This CMSIS function modifies the appropriate `NVIC_ISER` register <br>
+```
+
+
