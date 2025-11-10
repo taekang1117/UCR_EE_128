@@ -309,4 +309,30 @@ Interrupt Status Flag Register (one per port)
   * Acknowledge the interrupt at the source by writing 1 to the ISFR bits
   * e.g., `PORTD_ISFR = 0xFFFFFFFF; // writing 1 clears each pin
 
+## ISR Implementation Example
+EX: When a user presses SW2 (connected to PTC6), the MCU immediately toggles the green LED (PTE 26) using an interrupt
 
+1. Configure GPIO
+2. Enable the interrupt in NVIC: NVIC_EnableIRQ(PORTC_IRQn);
+3. Implement the ISR
+4. Must clear the interrupt flag (usually by writing a `1` to it)
+
+```
+void PORTC_IRQHandler(void){
+  NVIC_ClearPendingIRQ(PORTC_IRQn); // Clear pending status
+  if (PORTC_ISFR & (1 << 6) { // Check if PTC6 caused the interrupt
+    GPIOE_PTOR |= (1 << 26); // Toggle the LED on PTE26
+    PORTC_ISFR = (1 << 6); // Clear interrupt flag
+  }
+}
+```
+
+## Discussion Question 5
+After configuring a GPIO interrupt for a falling edge on a button pin, your ISR runs only once, even though the button is pressed repeatedly. Which of the following is the most likely mistake?
+
+A. ISR is missing a return statement <br>
+B. Interrupt flag in the ISFR register was not cleared <br>
+C. The NVIC is disabled <br>
+D. GPIO direction was incorrectly set to output 
+
+> Answer is B 
