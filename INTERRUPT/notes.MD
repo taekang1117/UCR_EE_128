@@ -265,3 +265,5 @@ __STATIC_INLINE void NVIC_EnableIRQ(IRQn_Type IRQn)
 |:---------------|:------------------------|:----------------------|
 | NVIC_ISPR | NVIC_SetPendingIRQ(IRQn) | Set pending |
 | NVIC_ICPR | NVIC_ClearPendingIRQ(IRQn) | Clear pending |
+
+# Interrupts for GPIO Pins
