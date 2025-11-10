@@ -385,3 +385,19 @@ void main (void) {
 
 In this code, the main() function does not do anything after initialization
 
+## Discussion Question 6
+An external device sends serial data to your MCU. The first byte arrives at an unpredictable time, after that, more bytes follow periodically (e.g., every 10ms) <br>
+How would you use polling or interrupts in this scenario to effectiely handle the data? 
+
+### The Scenario
+* An external device sends serial data
+* The first byte arrives unpredictably 
+* After that, bytes arrive periodically (every 10ms)
+
+#### The challenge 
+You need to detect when data arrives and read it efficiently - without wasting CPU time
+
+##### Best Practice Answer
+Use ***interrupts*** to detect the first incoming byte, <br>
+then use ***polling*** (or DMA) to handle the rest of the data stream 
+
