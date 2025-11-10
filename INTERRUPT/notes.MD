@@ -361,3 +361,15 @@ void main (void) {
 The procedure first checks PORTA for the falling signal <br>
 Then, toggle Port D and checks PORTA for the rising signal 
 
+### Interrupt
+```
+void PORTA_IRQHandler(void) {
+  NVIC_ClearPendingIRQ(PORTA_IRQn); 
+
+
+
+
+```
+> PORTA_IRQHandler() is the interrupt service routine for PORTA IRQ <br>
+In this code, the main() function does not do anything after initialization
+
