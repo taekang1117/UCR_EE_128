@@ -209,6 +209,7 @@ CMSIS: Cortex Microcontroller Software Interface Standard
 ### Using CMSIS to access NVIC registers
 * These functions are designed to set the appropriate NVIC registers
 * You can use these instead of programming each NVIC register individually 
+
 | **CMSIS Function**                                         | **Description**                                                                                                    |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `void NVIC_EnableIRQ(IRQn_Type IRQn)`                      | Enables an interrupt or exception.                                                                                 |
