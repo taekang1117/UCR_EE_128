@@ -200,5 +200,28 @@ Registers related to the interrupt of Cortex-M processors are usually inside the
 - supports up to 240 IRQs <br>
 - Programmable priority levels 
 
+## CMSIS
+CMSIS: Cortex Microcontroller Software Interface Standard
+- Vendor-independent hardware abstraction layer (HAL) for Cortex-M processor series
+- K64F is based on the M4 architecture
+- We will use CMSIS for control NVIC registers
+
+### Using CMSIS to access NVIC registers
+* These functions are designed to set the appropriate NVIC registers
+* You can use these instead of programming each NVIC register individually 
+| **CMSIS Function**                                         | **Description**                                                                                                    |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `void NVIC_EnableIRQ(IRQn_Type IRQn)`                      | Enables an interrupt or exception.                                                                                 |
+| `void NVIC_DisableIRQ(IRQn_Type IRQn)`                     | Disables an interrupt or exception.                                                                                |
+| `void NVIC_SetPendingIRQ(IRQn_Type IRQn)`                  | Sets the pending status of an interrupt or exception to 1.                                                         |
+| `void NVIC_ClearPendingIRQ(IRQn_Type IRQn)`                | Clears the pending status of an interrupt or exception to 0.                                                       |
+| `uint32_t NVIC_GetPendingIRQ(IRQn_Type IRQn)`              | Reads the pending status of an interrupt or exception. Returns a non-zero value if the pending status is set to 1. |
+| `void NVIC_SetPriority(IRQn_Type IRQn, uint32_t priority)` | Sets the priority of an interrupt or exception with a configurable priority level.                                 |
+| `uint32_t NVIC_GetPriority(IRQn_Type IRQn)`                | Reads the current priority level of an interrupt or exception.                                                     |
 
 
+# NVIC CMSIS Functions
+Example 
+```
+NVIC_EnablerIRQ(PORTA_IRQn); // Enable the PORTA pin interrupts 
+```
