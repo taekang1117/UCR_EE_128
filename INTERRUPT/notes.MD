@@ -401,3 +401,22 @@ You need to detect when data arrives and read it efficiently - without wasting C
 Use ***interrupts*** to detect the first incoming byte, <br>
 then use ***polling*** (or DMA) to handle the rest of the data stream 
 
+## Discussion Question 7 & 8
+
+### 1. Serial Data Handling (Polling vs Interrupts)
+- Use **interrupt** to detect the **first byte** (unpredictable arrival).
+- After stream begins (e.g. every 10 ms):
+  - Use **polling** or continue **interrupts** for predictable timing.
+  - For high-speed data → use **DMA + interrupt**.
+- Efficient combo:  
+  Interrupt for unpredictable → Polling for periodic.
+
+---
+
+### 2. Why Interrupts Matter More on MCUs
+ **Correct:** A, B, D, F  
+- **A.** MCUs often run **without OS**, rely on interrupts.  
+- **B.** Interact with **real-world events** → timing critical.  
+- **D.** Handle **single main task**, must respond fast.  
+- **F.** Save power by **sleeping until interrupt**.  
+-  PCs can rely on threads/polling (less timing-critical).
