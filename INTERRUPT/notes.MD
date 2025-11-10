@@ -233,6 +233,15 @@ Example <br>
 NVIC_EnablerIRQ(PORTA_IRQn); // Enable the PORTA pin interrupts 
 ```
 This CMSIS function modifies the appropriate `NVIC_ISER` register <br>
+
+```
+__STATIC_INLINE void NVIC_EnableIRQ(IRQn_Type IRQn)
+{
+    NVIC->ISER[((uint32_t)(int32_t)IRQn >> 5UL)] =
+        (uint32_t)(1UL << (((uint32_t)(int32_t)IRQn & 0x1FUL)));
+}
 ```
 
+|Expression        |Meaning |
+|`NVIC->ISER[]`    |Interrupt Set-Enabler| 
 
