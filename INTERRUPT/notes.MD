@@ -281,4 +281,14 @@ Interrupt Status Flag Register (one per port)
 - ***Each bit*** corresponds to an input pin
 - Bit is set to 1 if an interrupt has been detected
 
+## Overhead of Interrupts
+* Saving and restoring of CPU registers
+* Execution time of the interrupt service routine (ISR)
+* Interrupt "latency" : time from interrupt signal arrival to ISR entry
 
+# Steps to Write an ISR on K64F
+1. Define an ISR with no args and no return: the only valid signature is void <br>
+  `void PORTD_IRQHandler(void){...}` <br>
+2. Name the function exactly per ***CMSIS*** (e.g., `PORTD_IRQHandler`) <br>
+  The linker will load the vector table with this handler rather than the default one <br>
+3. 
