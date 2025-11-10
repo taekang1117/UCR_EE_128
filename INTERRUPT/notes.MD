@@ -364,21 +364,21 @@ Then, toggle Port D and checks PORTA for the rising signal
 ### Interrupt
 ```
 void PORTA_IRQHandler(void) {
-    NVIC_ClearPendingIRQ(PORTA_IRQn); /* Clear pending interrupts */
-    GPIOD_PTOR |= 0xFF;               /* Toggle */
-    PORTA_ISFR = (1 << 1);            /* Clear ISFR for PORTA, Pin 1*/
+    NVIC_ClearPendingIRQ(PORTA_IRQn); 
+    GPIOD_PTOR |= 0xFF;               
+    PORTA_ISFR = (1 << 1);            
 }
 
 void main (void) {
     SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTD_MASK);
-    PORTA_PCR1 = 0xA0100;   /* Configure PORTA[1] for GPIO & Interrupt on Falling-Edge */
-    PORTD_GPCLR = 0x00FF0100;/* Configure PORTD[7:0] for GPIO */
-    GPIOA_PDDR |= (0 << 1);  /* PORTA[1] input mode */
-    GPIOD_PDDR |= 0x000000FF;/* PORTD[7:0] output mode */
-    GPIOD_PDOR |= 0x00;      /* Initial output */
-    PORTA_ISFR = (1 << 1);   /* Clear ISFR for PORTA, Pin 1 */
-    NVIC_EnableIRQ(PORTA_IRQn); /* Enable interrupts from PORTA */
-    while(1);                /* Do something, or go to sleep */
+    PORTA_PCR1 = 0xA0100;   
+    PORTD_GPCLR = 0x00FF0100;
+    GPIOA_PDDR |= (0 << 1);  
+    GPIOD_PDDR |= 0x000000FF;
+    GPIOD_PDOR |= 0x00;      
+    PORTA_ISFR = (1 << 1);   
+    NVIC_EnableIRQ(PORTA_IRQn); 
+    while(1);                
 }
 ```
 > PORTA_IRQHandler() is the interrupt service routine for PORTA IRQ 
