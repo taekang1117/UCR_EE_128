@@ -358,7 +358,7 @@ void main (void) {
   }
 }
 ```
-The procedure first checks PORTA for the falling signal <br>
+> The procedure first checks PORTA for the falling signal <br>
 Then, toggle Port D and checks PORTA for the rising signal 
 
 ### Interrupt
@@ -370,6 +370,7 @@ void PORTA_IRQHandler(void) {
 
 
 ```
-> PORTA_IRQHandler() is the interrupt service routine for PORTA IRQ <br>
+> PORTA_IRQHandler() is the interrupt service routine for PORTA IRQ 
+
 In this code, the main() function does not do anything after initialization
 
