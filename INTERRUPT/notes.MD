@@ -336,3 +336,28 @@ C. The NVIC is disabled <br>
 D. GPIO direction was incorrectly set to output 
 
 > Answer is B 
+
+# Example
+Suppose Port A's pin 1 is connected to a 1 Hz digital waveform and Port D's pins 0-7 are connected to eight LEDs. 
+
+### Polling
+```
+void main (void) {
+  SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTD_MASK);
+  PORTA_PCR1 = 0x0100; // configure PORTA[1] for GPIO
+  PORTD_GPCLR = 0x00FF0100; // Configure PORTD[7:0] for GPIO
+
+  GPIOA_PDDR |= (0 << 1); // PORTA[1] input mode
+  GPIOD_PDDR |= 0x000000FF; // PORTD[7:0] for output mode
+
+  GPIOD_PDOR |= 0x00; // Initial output 
+  while (1){
+    while(GPIOA_PDIR & 0x2); // Polling: Wait until fall
+    GPIOD_PTOR = 0xFF;        // Toggle output on PORTD[7:0]
+    while(!(GPIOA_PDIR & 0x2)); // Polling: wait until rise
+  }
+}
+```
+The procedure first checks PORTA for the falling signal <br>
+Then, toggle Port D and checks PORTA for the rising signal 
+
