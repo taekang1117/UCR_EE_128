@@ -268,5 +268,5 @@ __STATIC_INLINE void NVIC_EnableIRQ(IRQn_Type IRQn)
 
 # Interrupts for GPIO Pins
 * MCU shall react immediately when sth happens at an input pin <br>
-* Each GPIO Port
+* Each GPIO Port  <br>
 ••••* Up to 32 pins
