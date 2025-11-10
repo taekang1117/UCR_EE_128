@@ -287,8 +287,14 @@ Interrupt Status Flag Register (one per port)
 * Interrupt "latency" : time from interrupt signal arrival to ISR entry
 
 # Steps to Write an ISR on K64F
-1. Define an ISR with no args and no return: the only valid signature is void <br>
-  `void PORTD_IRQHandler(void){...}` <br>
-2. Name the function exactly per ***CMSIS*** (e.g., `PORTD_IRQHandler`) <br>
-  The linker will load the vector table with this handler rather than the default one <br>
-3. 
+1. Define an ISR with no args and no return: the only valid signature is void
+  `void PORTD_IRQHandler(void){...}` 
+
+2. Name the function exactly per ***CMSIS*** (e.g., `PORTD_IRQHandler`) 
+  The linker will load the vector table with this handler rather than the default one 
+
+3. Clear any pending NVIC state
+  * Clear any old interrupt request to avoid retrigger
+  * Call  `NVIC_ClearPendingIRQ(PORTD_IRQn)`
+
+4. If multiple
