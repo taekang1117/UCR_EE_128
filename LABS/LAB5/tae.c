@@ -4,8 +4,9 @@
 // PIN DEFINITIONS (PORT D)
 // -----------------------------------------------------------------------------
 
+// INITIALIZATION
 // Motor Phase A (Connected to L298 OUT1 & OUT2)
-#define A1_PIN (1u << 0) // PORT D, Pin 0
+#define A1_PIN (1u << 0) // PORT D, Pin 0 
 #define A2_PIN (1u << 1) // PORT D, Pin 1
 
 // Motor Phase B (Connected to L298 OUT3 & OUT4)
