@@ -1,13 +1,12 @@
 #include "fsl_device_registers.h"
 
- * Pin Configuration:
- * - PORTD PIN 0 (PTD0): A1 output to L298N
- * - PORTD PIN 1 (PTD1): A2 output to L298N
- * - PORTD PIN 2 (PTD2): B1 output to L298N
- * - PORTD PIN 3 (PTD3): B2 output to L298N
- * - PORTB PIN 2 (PTB2): ROT_DIR (0=CW, 1=CCW)
- * - PORTB PIN 3 (PTB3): ROT_SPD (0=22.5deg/s, 1=180deg/s)
- */
+// Pin Configuration:
+// - PORTD PIN 0 (PTD0): A1 output to L298N
+//  - PORTD PIN 1 (PTD1): A2 output to L298N
+//  - PORTD PIN 2 (PTD2): B1 output to L298N
+//  - PORTD PIN 3 (PTD3): B2 output to L298N
+//  - PORTB PIN 2 (PTB2): ROT_DIR (0=CW, 1=CCW)
+//  - PORTB PIN 3 (PTB3): ROT_SPD (0=22.5deg/s, 1=180deg/s)
 
 #include "MK64F12.h"
 
