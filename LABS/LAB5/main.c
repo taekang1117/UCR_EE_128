@@ -1,186 +1,161 @@
+/*
+ * EE128 Lab 5: Stepper Motor Control
+ * FRDM-K64F Board
+ * Controls a bipolar stepper motor using L298N driver
+ * 
+ * Pin Configuration:
+ * - Motor Control Outputs: Port D (PD0-PD3)
+ *   - PD0: A1 (Yellow wire)
+ *   - PD1: A2 (White wire)
+ *   - PD2: B1 (Red wire)
+ *   - PD3: B2 (Blue wire)
+ * - DIP Switch Inputs: Port B (PB2-PB3)
+ *   - PB2: ROT_DIR (0=CW, 1=CCW)
+ *   - PB3: ROT_SPD (0=22.5°/s, 1=180°/s)
+ */
+
 #include "fsl_device_registers.h"
 
-// Pin Configuration:
-// - PORTD PIN 0 (PTD0): A1 output to L298N
-//  - PORTD PIN 1 (PTD1): A2 output to L298N
-//  - PORTD PIN 2 (PTD2): B1 output to L298N
-//  - PORTD PIN 3 (PTD3): B2 output to L298N
-//  - PORTB PIN 2 (PTB2): ROT_DIR (0=CW, 1=CCW)
-//  - PORTB PIN 3 (PTB3): ROT_SPD (0=22.5deg/s, 1=180deg/s)
-
-#include "MK64F12.h"
-
-// Step patterns for full-step, two-phase on mode
-// Each row: {A1, A2, B1, B2}
-const uint8_t stepPattern[4][4] = {
-    {0, 1, 1, 0},  // Step 0: A1=0, A2=1, B1=1, B2=0
-    {1, 0, 1, 0},  // Step 1: A1=1, A2=0, B1=1, B2=0
-    {1, 0, 0, 1},  // Step 2: A1=1, A2=0, B1=0, B2=1
-    {0, 1, 0, 1}   // Step 3: A1=0, A2=1, B1=0, B2=1
+// Step patterns for two-phase on, full-step mode
+// Format: {A1, A2, B1, B2}
+int stepPattern[4][4] = {
+    {0, 1, 1, 0},  // Step 0
+    {1, 0, 1, 0},  // Step 1
+    {1, 0, 0, 1},  // Step 2
+    {0, 1, 0, 1}   // Step 3
 };
 
-// Global variables
 volatile int currentStep = 0;
 volatile uint8_t direction = 0;  // 0 = CW, 1 = CCW
-volatile uint8_t speed = 0;      // 0 = slow (22.5 deg/s), 1 = fast (180 deg/s)
+volatile uint8_t speed = 0;      // 0 = slow, 1 = fast
 
-// Function prototypes
-void GPIO_Init(void);
-void PIT_Init(void);
-void readSwitches(void);
-void outputStepToMotor(int step);
-void advanceStep(void);
+void init_gpio(void);
+void init_pit(void);
+void read_switches(void);
+void output_step(int step);
 
 int main(void) {
-    // Initialize peripherals
-    GPIO_Init();
-    PIT_Init();
+    init_gpio();
+    init_pit();
     
-    // Main loop
-    while(1) {
-        readSwitches();  // Continuously read DIP switches
-        // Timer interrupt handles stepping
+    while (1) {
+        // Continuously read DIP switches for mode changes
+        read_switches();
     }
 }
 
-/*
- * Initialize GPIO pins
- * PORTD 0-3: Outputs to L298N (motor control)
- * PORTB 2-3: Inputs from DIP switches (with pull-up resistors)
- */
-void GPIO_Init(void) {
-    // Enable clock to PORTB and PORTD
-    SIM->SCGC5 |= SIM_SCGC5_PORTB_MASK;
-    SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
+void init_gpio(void) {
+    // Enable clock for Port B and D
+    SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
+    SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK;
     
-    // Configure PORTD pins 0-3 as GPIO outputs
-    PORTD->PCR[0] = PORT_PCR_MUX(1);  // PTD0 - A1
-    PORTD->PCR[1] = PORT_PCR_MUX(1);  // PTD1 - A2
-    PORTD->PCR[2] = PORT_PCR_MUX(1);  // PTD2 - B1
-    PORTD->PCR[3] = PORT_PCR_MUX(1);  // PTD3 - B2
+    // Configure Port D pins 0-3 as GPIO (motor control outputs)
+    PORTD_PCR0 = 0x100;  // A1
+    PORTD_PCR1 = 0x100;  // A2
+    PORTD_PCR2 = 0x100;  // B1
+    PORTD_PCR3 = 0x100;  // B2
     
-    // Set PORTD pins 0-3 as outputs
-    PTD->PDDR |= (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);
+    // Configure Port B pins 2-3 as GPIO with pull-up (DIP switch inputs)
+    PORTB_PCR2 = 0x103;  // GPIO with pull-up for ROT_DIR
+    PORTB_PCR3 = 0x103;  // GPIO with pull-up for ROT_SPD
     
-    // Initialize all outputs to 0
-    PTD->PCOR = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);
+    // Set Port D pins 0-3 as outputs
+    GPIOD_PDDR |= (1<<0) | (1<<1) | (1<<2) | (1<<3);
     
-    // Configure PORTB pins 2-3 as GPIO inputs with pull-up resistors
-    PORTB->PCR[2] = PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;  // PTB2 - ROT_DIR
-    PORTB->PCR[3] = PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;  // PTB3 - ROT_SPD
+    // Set Port B pins 2-3 as inputs
+    GPIOB_PDDR &= ~((1<<2) | (1<<3));
     
-    // Set PORTB pins 2-3 as inputs
-    PTB->PDDR &= ~((1 << 2) | (1 << 3));
+    // Initialize all motor outputs to LOW
+    GPIOD_PDOR &= ~0x0F;
 }
 
-/*
- * Initialize PIT (Periodic Interrupt Timer)
- * Used to generate precise timing for stepper motor steps
- */
-void PIT_Init(void) {
-    // Enable clock to PIT module
-    SIM->SCGC6 |= SIM_SCGC6_PIT_MASK;
+void init_pit(void) {
+    // Enable PIT clock
+    SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
     
-    // Enable PIT module
-    PIT->MCR = 0x00;  // Enable PIT, continue in debug mode
+    // Enable PIT module (MCR = 0x00)
+    PIT_MCR = 0x00;
     
-    // Configure PIT Channel 0
-    // Bus clock = 60 MHz (default for K64F)
-    // For 22.5 deg/s: 250ms = 250000 us -> 60MHz * 0.25s = 15,000,000 ticks
-    PIT->CHANNEL[0].LDVAL = 15000000 - 1;  // Start with slow speed
+    // Configure PIT Timer 0
+    // Bus clock = 60 MHz
+    // Slow speed: 22.5°/s = 4 steps/sec = 250ms
+    // 60 MHz * 0.25s = 15,000,000 ticks
+    PIT_LDVAL0 = 15000000 - 1;
     
-    // Enable interrupts for PIT Channel 0
-    PIT->CHANNEL[0].TCTRL = PIT_TCTRL_TIE_MASK;
+    // Enable Timer 0 interrupts
+    PIT_TCTRL0 = 0x02;  // TIE = 1 (interrupt enabled)
     
     // Enable PIT interrupt in NVIC
     NVIC_EnableIRQ(PIT0_IRQn);
     
-    // Start timer
-    PIT->CHANNEL[0].TCTRL |= PIT_TCTRL_TEN_MASK;
+    // Start Timer 0
+    PIT_TCTRL0 |= 0x01;  // TEN = 1 (timer enabled)
 }
 
-/*
- * Read DIP switches and update speed/direction
- */
-void readSwitches(void) {
+void read_switches(void) {
     uint8_t newDirection, newSpeed;
     
-    // Read ROT_DIR (PTB2) - active low due to pull-up
-    // Switch closed (connected to ground) = 0, Switch open = 1
-    newDirection = (PTB->PDIR & (1 << 2)) ? 0 : 1;  // 0=CW, 1=CCW
+    // Read DIP switches (active low with pull-up)
+    // Switch closed (grounded) = 0, open = 1
+    newDirection = (GPIOB_PDIR & (1<<2)) ? 0 : 1;  // PB2: ROT_DIR
+    newSpeed = (GPIOB_PDIR & (1<<3)) ? 0 : 1;      // PB3: ROT_SPD
     
-    // Read ROT_SPD (PTB3) - active low due to pull-up
-    newSpeed = (PTB->PDIR & (1 << 3)) ? 0 : 1;  // 0=slow, 1=fast
-    
-    // Update global variables
+    // Update direction
     direction = newDirection;
     
-    // Update timer period if speed changed
+    // Update speed and timer period if changed
     if (speed != newSpeed) {
         speed = newSpeed;
         
-        // Disable timer while updating
-        PIT->CHANNEL[0].TCTRL &= ~PIT_TCTRL_TEN_MASK;
+        // Disable timer while updating load value
+        PIT_TCTRL0 &= ~0x01;
         
         if (speed == 0) {
-            // Slow speed: 22.5 deg/s = 4 steps/sec = 250ms per step
-            // 60MHz * 0.25s = 15,000,000 ticks
-            PIT->CHANNEL[0].LDVAL = 15000000 - 1;
+            // Slow: 22.5°/s = 250ms per step
+            PIT_LDVAL0 = 15000000 - 1;
         } else {
-            // Fast speed: 180 deg/s = 32 steps/sec = 31.25ms per step
-            // 60MHz * 0.03125s = 1,875,000 ticks
-            PIT->CHANNEL[0].LDVAL = 1875000 - 1;
+            // Fast: 180°/s = 31.25ms per step
+            PIT_LDVAL0 = 1875000 - 1;
         }
         
         // Re-enable timer
-        PIT->CHANNEL[0].TCTRL |= PIT_TCTRL_TEN_MASK;
+        PIT_TCTRL0 |= 0x01;
     }
 }
 
-/*
- * Output step pattern to motor
- */
-void outputStepToMotor(int step) {
-    // Clear all output pins first
-    PTD->PCOR = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);
+void output_step(int step) {
+    uint32_t output = 0;
     
-    // Set pins according to step pattern
-    if (stepPattern[step][0]) PTD->PSOR = (1 << 0);  // A1
-    if (stepPattern[step][1]) PTD->PSOR = (1 << 1);  // A2
-    if (stepPattern[step][2]) PTD->PSOR = (1 << 2);  // B1
-    if (stepPattern[step][3]) PTD->PSOR = (1 << 3);  // B2
+    // Build output word from step pattern
+    if (stepPattern[step][0]) output |= (1<<0);  // A1
+    if (stepPattern[step][1]) output |= (1<<1);  // A2
+    if (stepPattern[step][2]) output |= (1<<2);  // B1
+    if (stepPattern[step][3]) output |= (1<<3);  // B2
+    
+    // Output to Port D (clear bits 0-3, then set according to pattern)
+    GPIOD_PDOR = (GPIOD_PDOR & ~0x0F) | (output & 0x0F);
 }
 
-/*
- * Advance to next step based on direction
- */
-void advanceStep(void) {
+// PIT Timer 0 ISR - Steps the motor at precise intervals
+void PIT0_IRQHandler(void) {
+    // Output current step pattern to motor
+    output_step(currentStep);
+    
+    // Advance to next step based on direction
     if (direction == 0) {
-        // Clockwise: increment step
+        // Clockwise: increment
         currentStep++;
         if (currentStep > 3) {
             currentStep = 0;
         }
     } else {
-        // Counterclockwise: decrement step
+        // Counterclockwise: decrement
         currentStep--;
         if (currentStep < 0) {
             currentStep = 3;
         }
     }
-}
-
-/*
- * PIT Channel 0 Interrupt Handler
- * Called at precise intervals to step the motor
- */
-void PIT0_IRQHandler(void) {
-    // Output current step to motor
-    outputStepToMotor(currentStep);
     
-    // Advance to next step
-    advanceStep();
-    
-    // Clear interrupt flag
-    PIT->CHANNEL[0].TFLG = PIT_TFLG_TIF_MASK;
+    // Clear Timer 0 interrupt flag
+    PIT_TFLG0 = 0x01;
 }
