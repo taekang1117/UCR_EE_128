@@ -4,11 +4,13 @@
  * Controls a bipolar stepper motor using L298N driver
  * 
  * Pin Configuration:
- * - Motor Control Outputs: Port D (PD0-PD3)
- *   - PD0: A1 (Yellow wire)
- *   - PD1: A2 (White wire)
- *   - PD2: B1 (Red wire)
- *   - PD3: B2 (Blue wire)
+ * - Motor Control Outputs: Port D (PD0-PD5)
+ *   - PD0: IN1/A1 (Yellow wire)
+ *   - PD1: IN2/A2 (White wire)
+ *   - PD2: IN3/B1 (Red wire)
+ *   - PD3: IN4/B2 (Blue wire)
+ *   - PD4: ENA (Enable for Motor A)
+ *   - PD5: ENB (Enable for Motor B)
  * - DIP Switch Inputs: Port B (PB2-PB3)
  *   - PB2: ROT_DIR (0=CW, 1=CCW)
  *   - PB3: ROT_SPD (0=22.5°/s, 1=180°/s)
@@ -50,23 +52,30 @@ void init_gpio(void) {
     SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK;
     
     // Configure Port D pins 0-3 as GPIO (motor control outputs)
-    PORTD_PCR0 = 0x100;  // A1
-    PORTD_PCR1 = 0x100;  // A2
-    PORTD_PCR2 = 0x100;  // B1
-    PORTD_PCR3 = 0x100;  // B2
+    PORTD_PCR0 = 0x100;  // IN1/A1
+    PORTD_PCR1 = 0x100;  // IN2/A2
+    PORTD_PCR2 = 0x100;  // IN3/B1
+    PORTD_PCR3 = 0x100;  // IN4/B2
+    
+    // Configure Port D pins 4-5 as GPIO (L298N enable pins)
+    PORTD_PCR4 = 0x100;  // ENA
+    PORTD_PCR5 = 0x100;  // ENB
     
     // Configure Port B pins 2-3 as GPIO with pull-up (DIP switch inputs)
     PORTB_PCR2 = 0x103;  // GPIO with pull-up for ROT_DIR
     PORTB_PCR3 = 0x103;  // GPIO with pull-up for ROT_SPD
     
-    // Set Port D pins 0-3 as outputs
-    GPIOD_PDDR |= (1<<0) | (1<<1) | (1<<2) | (1<<3);
+    // Set Port D pins 0-5 as outputs
+    GPIOD_PDDR |= (1<<0) | (1<<1) | (1<<2) | (1<<3) | (1<<4) | (1<<5);
     
     // Set Port B pins 2-3 as inputs
     GPIOB_PDDR &= ~((1<<2) | (1<<3));
     
-    // Initialize all motor outputs to LOW
+    // Initialize all motor control outputs to LOW
     GPIOD_PDOR &= ~0x0F;
+    
+    // Enable the L298N driver by setting ENA and ENB HIGH
+    GPIOD_PDOR |= (1<<4) | (1<<5);  // Set PD4 (ENA) and PD5 (ENB) HIGH
 }
 
 void init_pit(void) {
@@ -84,6 +93,12 @@ void init_pit(void) {
     
     // Enable Timer 0 interrupts
     PIT_TCTRL0 = 0x02;  // TIE = 1 (interrupt enabled)
+    
+    // Clear any pending PIT0 interrupt flags
+    PIT_TFLG0 = 0x01;
+    
+    // Clear any pending interrupts in NVIC
+    NVIC_ClearPendingIRQ(PIT0_IRQn);
     
     // Enable PIT interrupt in NVIC
     NVIC_EnableIRQ(PIT0_IRQn);
