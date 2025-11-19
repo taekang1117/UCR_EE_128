@@ -16,6 +16,7 @@ void main(void)
 {
     // 1. Enable clock for PORTD
     SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK;
+    unsigned long i; 
     
     // 2. Configure PTD0-PTD5 as GPIO (MUX = 1)
     // Manually configure each pin
@@ -41,18 +42,18 @@ void main(void)
         
         // Step 1: A1 + B1 active (both enables ON)
         GPIOD_PDOR = 0x35;  // Binary: 00110101
-        delay(2000000);  // Longer delay for visibility
+        for (i=0; i < 10000; i++);  // Longer delay for visibility
         
         // Step 2: A1 + B2 active
         GPIOD_PDOR = 0x39;  // Binary: 00111001
-        delay(2000000);
+        for (i=0; i < 10000; i++);
         
         // Step 3: A2 + B2 active
         GPIOD_PDOR = 0x3A;  // Binary: 00111010
-        delay(2000000);
+        for (i=0; i < 10000; i++);
         
         // Step 4: A2 + B1 active
         GPIOD_PDOR = 0x36;  // Binary: 00110110
-        delay(2000000);
+        for (i=0; i < 10000; i++);
     }
 }
