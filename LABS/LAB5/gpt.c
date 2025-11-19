@@ -1,5 +1,4 @@
 #include "fsl_device_registers.h"
-#include <stdio.h>
 
 const uint8_t stepPattern[4][4] = {
     {0, 1, 1, 0},  
@@ -9,10 +8,10 @@ const uint8_t stepPattern[4][4] = {
 };
 
 volatile int currentStep = 0;
-volatile uint8_t direction = 0;
-volatile uint8_t speed = 0;
+volatile uint8_t direction = 0;  // 0 = CW, 1 = CCW
+volatile uint8_t speed = 0;      // 0 = slow, 1 = fast
 
-volatile int pit_isr_count = 0;
+volatile int pit_isr_count = 0;  // Helps with breakpoints
 
 void init_gpio(void);
 void init_pit(void);
@@ -23,30 +22,16 @@ int main(void)
 {
     init_gpio();
 
-    read_switches();  
+    // Read DIP switches before PIT starts
+    read_switches();
 
     init_pit();
 
-    __enable_irq();
-
-    printf("Debug start. Direction=%d Speed=%d\n", direction, speed);
-
-    int last_isr = 0;
+    __enable_irq();   // IMPORTANT
 
     while(1)
     {
-        read_switches();
-
-        if (pit_isr_count != last_isr)
-        {
-            last_isr = pit_isr_count;
-            printf("ISR=%d  Step=%d  Dir=%d  Spd=%d  PDOR=0x%x\n",
-                   pit_isr_count,
-                   currentStep,
-                   direction,
-                   speed,
-                   GPIOD_PDOR);
-        }
+        read_switches();   // breakpoint here to inspect switch values
     }
 }
 
@@ -62,16 +47,14 @@ void init_gpio(void)
     PORTD_PCR4 = 0x100;
     PORTD_PCR5 = 0x100;
 
-    PORTB_PCR2 = 0x103;
+    PORTB_PCR2 = 0x103;  // pull-up
     PORTB_PCR3 = 0x103;
 
-    GPIOD_PDDR |= 0x3F;
-    GPIOB_PDDR &= ~((1<<2)|(1<<3));
+    GPIOD_PDDR |= 0x3F;   // PD0–PD5 outputs
+    GPIOB_PDDR &= ~((1<<2)|(1<<3)); 
 
-    GPIOD_PDOR &= ~0x3F;
-    GPIOD_PDOR |= (1<<4)|(1<<5);
-
-    printf("init_gpio done. PDOR=0x%x PDDR=0x%x\n", GPIOD_PDOR, GPIOD_PDDR);
+    GPIOD_PDOR &= ~0x3F;            // all low
+    GPIOD_PDOR |= (1<<4)|(1<<5);    // ENA, ENB HIGH
 }
 
 void init_pit(void)
@@ -79,33 +62,21 @@ void init_pit(void)
     SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
     PIT_MCR = 0x00;
 
-    PIT_LDVAL0 = 15000000 - 1;
+    PIT_LDVAL0 = 15000000 - 1;  // slow default
 
-    PIT_TCTRL0 = 0x02;
+    PIT_TCTRL0 = 0x02; 
     PIT_TFLG0 = 0x01;
 
     NVIC_ClearPendingIRQ(PIT0_IRQn);
     NVIC_EnableIRQ(PIT0_IRQn);
 
-    PIT_TCTRL0 |= 0x01;
-
-    printf("init_pit done. LDVAL=%d TCTRL=0x%x\n", PIT_LDVAL0, PIT_TCTRL0);
+    PIT_TCTRL0 |= 0x01;  // TEN = 1
 }
 
 void read_switches(void)
 {
-    static int last_dir = -1;
-    static int last_spd = -1;
-
     int new_dir = (GPIOB_PDIR & (1<<2)) ? 0 : 1;
     int new_spd = (GPIOB_PDIR & (1<<3)) ? 0 : 1;
-
-    if (new_dir != last_dir || new_spd != last_spd)
-    {
-        last_dir = new_dir;
-        last_spd = new_spd;
-        printf("Switches: DIR=%d SPD=%d PDIR=0x%x\n", new_dir, new_spd, GPIOB_PDIR);
-    }
 
     direction = new_dir;
 
@@ -121,8 +92,6 @@ void read_switches(void)
             PIT_LDVAL0 = 1875000 - 1;
 
         PIT_TCTRL0 |= 0x01;
-
-        printf("Speed changed. New LDVAL=%d\n", PIT_LDVAL0);
     }
 }
 
@@ -135,12 +104,12 @@ void output_step(int step)
     if (stepPattern[step][2]) out |= (1<<2);
     if (stepPattern[step][3]) out |= (1<<3);
 
-    GPIOD_PDOR = (GPIOD_PDOR & ~0x0F) | (out & 0x0F);
+    GPIOD_PDOR = (GPIOD_PDOR & ~0x0F) | (out & 0x0F);   
 }
 
 void PIT0_IRQHandler(void)
 {
-    pit_isr_count++;
+    pit_isr_count++;  // breakpoint here to confirm ISR firing
 
     output_step(currentStep);
 
