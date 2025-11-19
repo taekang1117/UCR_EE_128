@@ -1,128 +1,110 @@
 #include "fsl_device_registers.h"
 
-const uint8_t stepPattern[4][4] = {
-    {0, 1, 1, 0},  
-    {1, 0, 1, 0},  
-    {1, 0, 0, 1},  
-    {0, 1, 0, 1}   
-};
+#define DELAY_FAST  3000u
+#define DELAY_SLOW  6000u
 
-volatile int currentStep = 0;
-volatile uint8_t direction = 0;  // 0 = CW, 1 = CCW
-volatile uint8_t speed = 0;      // 0 = slow, 1 = fast
+volatile unsigned long i;   // used by Delay()
 
-volatile int pit_isr_count = 0;  // Helps with breakpoints
+void init(void);
+void Delay(unsigned long Speed);
 
-void init_gpio(void);
-void init_pit(void);
-void read_switches(void);
-void output_step(int step);
-
-int main(void) 
+int main(void)
 {
-    init_gpio();
+    unsigned char FR1;   // current direction bit
+    unsigned char FR2 = 0;   // previous direction bit
+    unsigned long Speed;
 
-    // Read DIP switches before PIT starts
-    read_switches();
+    init();
 
-    init_pit();
-
-    __enable_irq();   // IMPORTANT
-
-    while(1)
+    while (1)
     {
-        read_switches();   // breakpoint here to inspect switch values
+        // Read direction switch on PB2
+        // With pull-up: open = 1, closed = 0
+        FR1 = (GPIOB_PDIR & (1u << 2)) ? 1u : 0u;
+
+        // Read speed switch on PB3
+        // If bit is 1 → fast, else → slow (same as reference: (PORTB & 0x02)?delay_fast:delay_slow)
+        Speed = (GPIOB_PDIR & (1u << 3)) ? DELAY_FAST : DELAY_SLOW;
+
+        // If direction changed since last loop, force a specific pattern (0x35)
+        // to avoid sudden jump in sequence (same as "if (FR2 != FR1) PORTA = 0x35;")
+        if (FR2 != FR1)
+        {
+            GPIOD_PDOR = 0x35u;  // 0011 0101 → ENA&ENB=1, coils pattern for a stable step
+        }
+
+        if (FR1)  // One direction (say, CW)
+        {
+            GPIOD_PDOR = 0x36u;  // step 0: A2/B1 high
+            Delay(Speed);
+
+            GPIOD_PDOR = 0x35u;  // step 1
+            Delay(Speed);
+
+            GPIOD_PDOR = 0x39u;  // step 2
+            Delay(Speed);
+
+            GPIOD_PDOR = 0x3Au;  // step 3
+            Delay(Speed);
+
+            FR2 = FR1;           // remember direction
+        }
+        else      // Opposite direction (CCW) – reverse sequence
+        {
+            GPIOD_PDOR = 0x36u;  // step 0
+            Delay(Speed);
+
+            GPIOD_PDOR = 0x3Au;  // step 3
+            Delay(Speed);
+
+            GPIOD_PDOR = 0x39u;  // step 2
+            Delay(Speed);
+
+            GPIOD_PDOR = 0x35u;  // step 1
+            Delay(Speed);
+
+            FR2 = FR1;
+        }
     }
 }
 
-void init_gpio(void)
+void init(void)
 {
+    // Enable clocks for Port A/B/C/D as needed; here we only need B and D
     SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
     SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK;
 
-    PORTD_PCR0 = 0x100;
-    PORTD_PCR1 = 0x100;
-    PORTD_PCR2 = 0x100;
-    PORTD_PCR3 = 0x100;
-    PORTD_PCR4 = 0x100;
-    PORTD_PCR5 = 0x100;
+    // Configure Port D pins 0–5 as GPIO (MUX = 001)
+    PORTD_PCR0 = 0x100u;  // PD0: IN1/A1
+    PORTD_PCR1 = 0x100u;  // PD1: IN2/A2
+    PORTD_PCR2 = 0x100u;  // PD2: IN3/B1
+    PORTD_PCR3 = 0x100u;  // PD3: IN4/B2
+    PORTD_PCR4 = 0x100u;  // PD4: ENA
+    PORTD_PCR5 = 0x100u;  // PD5: ENB
 
-    PORTB_PCR2 = 0x103;  // pull-up
-    PORTB_PCR3 = 0x103;
+    // Configure Port B pins 2–3 as GPIO with pull-up (active-low switches)
+    // 0x103 = MUX(001) + PE(1) + PS(1)
+    PORTB_PCR2 = 0x103u;  // direction switch
+    PORTB_PCR3 = 0x103u;  // speed switch
 
-    GPIOD_PDDR |= 0x3F;   // PD0–PD5 outputs
-    GPIOB_PDDR &= ~((1<<2)|(1<<3)); 
+    // DDRA = 0xFF in original → all A pins output
+    // Here: GPIOD_PDDR bits 0–5 output
+    GPIOD_PDDR |= 0x3Fu;
 
-    GPIOD_PDOR &= ~0x3F;            // all low
-    GPIOD_PDOR |= (1<<4)|(1<<5);    // ENA, ENB HIGH
+    // DDRB = 0x00 in original → all B pins input
+    // Here: PB2, PB3 input
+    GPIOB_PDDR &= ~((1u << 2) | (1u << 3));
+
+    // PORTA = 0x30 in original:
+    // 0x30 = 0011 0000 → ENA & ENB high, coils off initially.
+    GPIOD_PDOR = 0x30u;
 }
 
-void init_pit(void)
+void Delay(unsigned long Speed)
 {
-    SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
-    PIT_MCR = 0x00;
-
-    PIT_LDVAL0 = 15000000 - 1;  // slow default
-
-    PIT_TCTRL0 = 0x02; 
-    PIT_TFLG0 = 0x01;
-
-    NVIC_ClearPendingIRQ(PIT0_IRQn);
-    NVIC_EnableIRQ(PIT0_IRQn);
-
-    PIT_TCTRL0 |= 0x01;  // TEN = 1
-}
-
-void read_switches(void)
-{
-    int new_dir = (GPIOB_PDIR & (1<<2)) ? 0 : 1;
-    int new_spd = (GPIOB_PDIR & (1<<3)) ? 0 : 1;
-
-    direction = new_dir;
-
-    if (speed != new_spd)
+    // Simple busy-wait loop, like the reference code
+    for (i = 0; i < Speed; i++)
     {
-        speed = new_spd;
-
-        PIT_TCTRL0 &= ~0x01;
-
-        if (speed == 0)
-            PIT_LDVAL0 = 15000000 - 1;
-        else
-            PIT_LDVAL0 = 1875000 - 1;
-
-        PIT_TCTRL0 |= 0x01;
+        __NOP();    // optional: prevents aggressive optimization
     }
-}
-
-void output_step(int step)
-{
-    uint32_t out = 0;
-
-    if (stepPattern[step][0]) out |= (1<<0);
-    if (stepPattern[step][1]) out |= (1<<1);
-    if (stepPattern[step][2]) out |= (1<<2);
-    if (stepPattern[step][3]) out |= (1<<3);
-
-    GPIOD_PDOR = (GPIOD_PDOR & ~0x0F) | (out & 0x0F);   
-}
-
-void PIT0_IRQHandler(void)
-{
-    pit_isr_count++;  // breakpoint here to confirm ISR firing
-
-    output_step(currentStep);
-
-    if (direction == 0)
-    {
-        currentStep++;
-        if (currentStep > 3) currentStep = 0;
-    }
-    else
-    {
-        currentStep--;
-        if (currentStep < 0) currentStep = 3;
-    }
-
-    PIT_TFLG0 = 0x01;
 }
