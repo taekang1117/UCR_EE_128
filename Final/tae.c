@@ -2,10 +2,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SYSTEM_CLOCK (48000000u)  // 48 MHz core clock (FRDM-K64F default)
+#define SYSTEM_CLOCK (48000000u)  // adjust if your lab uses a different core clock
 
-// 7-segment display digit patterns (common cathode, segments a-g on PD0-PD6)
-// Bit 0 -> segment a, Bit 1 -> b, ... Bit 6 -> g
+// 7-segment display digit patterns (common cathode, PD0–PD6)
 int nums[10] = {
     0b1111110, // 0
     0b0110000, // 1
@@ -25,12 +24,12 @@ typedef enum {
 } AlarmState;
 
 // --- Global volatile flags/counters ---
-volatile uint32_t msTicks = 0;          // global ms tick from SysTick
-volatile uint32_t countdown_ms = 0;     // remaining countdown in ms
-volatile uint8_t  seconds_left = 15;    // remaining seconds (for display)
-volatile uint8_t  displayUpdateFlag = 0;
-volatile uint8_t  buttonPressedFlag = 0;
-volatile uint8_t  timeExpiredFlag = 0;
+volatile uint32_t msTicks        = 0;    // SysTick tick
+volatile uint32_t countdown_ms   = 0;    // remaining ms in countdown
+volatile uint8_t  seconds_left   = 9;    // display value (0–9)
+volatile uint8_t  displayFlag    = 0;    // request to refresh 7-seg
+volatile uint8_t  buttonFlag     = 0;    // button pressed
+volatile uint8_t  timeoutFlag    = 0;    // timer expired
 volatile uint8_t  countdown_active = 0;
 
 AlarmState currentState = STATE_LOCKED;
@@ -41,27 +40,27 @@ AlarmState currentState = STATE_LOCKED;
 #define BUTTON_MASK     (1u << 2)   // PTB2 (active low)
 
 // -----------------------------------------------------------------------------
-// Function prototypes
+// LED helpers
 // -----------------------------------------------------------------------------
-void init_gpio(void);
-void init_systick(void);
-void init_uart1(uint32_t baudrate);
-int  UART1_Available(void);
-char UART1_GetChar(void);
-void UART1_PutChar(char c);
-void display_digit(uint8_t digit);
-void delay_ms(uint32_t ms);
+static inline void red_on(void)    { GPIOD_PSOR = RED_LED_MASK; }
+static inline void red_off(void)   { GPIOD_PCOR = RED_LED_MASK; }
+static inline void green_on(void)  { GPIOC_PSOR = GREEN_LED_MASK; }
+static inline void green_off(void) { GPIOC_PCOR = GREEN_LED_MASK; }
 
 // -----------------------------------------------------------------------------
-// Simple helper functions for LEDs
+// 7-seg display: write digit on PD0–PD6, keep PD7 for LED
 // -----------------------------------------------------------------------------
-static inline void red_on(void)   { GPIOD_PSOR = RED_LED_MASK;  }  // set PD7
-static inline void red_off(void)  { GPIOD_PCOR = RED_LED_MASK;  }
-static inline void green_on(void) { GPIOC_PSOR = GREEN_LED_MASK; }
-static inline void green_off(void){ GPIOC_PCOR = GREEN_LED_MASK; }
+void display_digit(uint8_t digit)
+{
+    if (digit > 9) digit = 9;
+    uint32_t pattern = (uint32_t)(nums[digit] & 0x7F);  // bits 0–6
+
+    uint32_t current = GPIOD_PDOR & ~0x7F; // clear PD0–PD6
+    GPIOD_PDOR = current | pattern;
+}
 
 // -----------------------------------------------------------------------------
-// SysTick Handler: called every 1 ms
+// SysTick handler: 1 ms tick
 // -----------------------------------------------------------------------------
 void SysTick_Handler(void)
 {
@@ -71,14 +70,13 @@ void SysTick_Handler(void)
         if (countdown_ms > 0) {
             countdown_ms--;
 
-            // Every 1000 ms, decrement seconds_left and update display
+            // Every 1000 ms, update seconds_left
             if ((countdown_ms % 1000u) == 0u && seconds_left > 0) {
                 seconds_left--;
-                displayUpdateFlag = 1;
+                displayFlag = 1;
 
-                // When seconds reach 0 and time elapsed
                 if (seconds_left == 0 && countdown_ms == 0) {
-                    timeExpiredFlag = 1;
+                    timeoutFlag = 1;
                     countdown_active = 0;
                 }
             }
@@ -87,236 +85,189 @@ void SysTick_Handler(void)
 }
 
 // -----------------------------------------------------------------------------
-// PORTB IRQ Handler: button on PTB2 (active low)
+// Button interrupt: PORTB, PTB2, active-low
 // -----------------------------------------------------------------------------
 void PORTB_IRQHandler(void)
 {
-    // Check if PTB2 caused the interrupt
     if (PORTB_ISFR & BUTTON_MASK) {
-        PORTB_ISFR = BUTTON_MASK;     // clear interrupt flag by writing 1
-        buttonPressedFlag = 1;
+        PORTB_ISFR = BUTTON_MASK; // clear flag
+        buttonFlag = 1;
     }
 }
 
 // -----------------------------------------------------------------------------
-// Initialize GPIO: LEDs, button, 7-seg
-// -----------------------------------------------------------------------------
-void init_gpio(void)
-{
-    // Enable clocks for PORTB, PORTC, PORTD
-    SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK |
-                 SIM_SCGC5_PORTC_MASK |
-                 SIM_SCGC5_PORTD_MASK;
-
-    // --- Configure PTD0-6 as GPIO (7-seg segments), PTD7 as RED LED ---
-    PORTD_PCR0 = 0x100; // MUX=1 (GPIO)
-    PORTD_PCR1 = 0x100;
-    PORTD_PCR2 = 0x100;
-    PORTD_PCR3 = 0x100;
-    PORTD_PCR4 = 0x100;
-    PORTD_PCR5 = 0x100;
-    PORTD_PCR6 = 0x100;
-    PORTD_PCR7 = 0x100;
-
-    // Set PTD0-7 as outputs
-    GPIOD_PDDR |= 0xFF;
-
-    // Clear all bits initially
-    GPIOD_PDOR &= ~0xFF;
-
-    // --- Configure PTC8 as GPIO output for GREEN LED ---
-    PORTC_PCR8 = 0x100;     // MUX=1
-    GPIOC_PDDR |= GREEN_LED_MASK;
-    GPIOC_PDOR &= ~GREEN_LED_MASK; // off
-
-    // --- Configure PTB2 as GPIO input (button, active low), with pull-up & IRQ ---
-    // MUX=1 (GPIO), PE=1 (enable pull), PS=1 (pull-up), IRQC=0xA (falling edge)
-    PORTB_PCR2 = 0x0A0103;
-    GPIOB_PDDR &= ~BUTTON_MASK;  // input
-
-    // Clear any pending interrupt flags
-    PORTB_ISFR = BUTTON_MASK;
-
-    // Enable PORTB interrupt in NVIC
-    NVIC_EnableIRQ(PORTB_IRQn);
-}
-
-// -----------------------------------------------------------------------------
-// Initialize SysTick for 1 ms interrupts
-// -----------------------------------------------------------------------------
-void init_systick(void)
-{
-    uint32_t reload = (SYSTEM_CLOCK / 1000u) - 1u; // 1 ms
-    SysTick->LOAD = reload;
-    SysTick->VAL  = 0;
-    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
-                    SysTick_CTRL_TICKINT_Msk   |
-                    SysTick_CTRL_ENABLE_Msk;
-}
-
-// -----------------------------------------------------------------------------
-// Initialize UART1 on PTC3 (RX) and PTC4 (TX) at given baudrate
+// UART1 helpers (PTC3 RX, PTC4 TX)
 // -----------------------------------------------------------------------------
 void init_uart1(uint32_t baudrate)
 {
-    // Enable clocks for UART1 and PORTC
     SIM_SCGC4 |= SIM_SCGC4_UART1_MASK;
     SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;
 
-    // Set PTC3 as UART1_RX (ALT3), PTC4 as UART1_TX (ALT3)
-    PORTC_PCR3 = 0x300;  // MUX=3
-    PORTC_PCR4 = 0x300;  // MUX=3
+    // PTC3 -> UART1_RX, PTC4 -> UART1_TX (ALT3)
+    PORTC_PCR3 = PORT_PCR_MUX(3);
+    PORTC_PCR4 = PORT_PCR_MUX(3);
 
-    // Disable UART1 before config
+    // Disable before configuring
     UART1_C2 &= ~(UART_C2_TE_MASK | UART_C2_RE_MASK);
 
-    // Baud rate calculation: SBR = system_clock / (16 * baudrate)
+    // Baud = SYSTEM_CLOCK / (16 * SBR)
     uint16_t sbr = (uint16_t)(SYSTEM_CLOCK / (16u * baudrate));
-
     UART1_BDH = (UART1_BDH & ~UART_BDH_SBR_MASK) | ((sbr >> 8) & UART_BDH_SBR_MASK);
     UART1_BDL = (uint8_t)(sbr & 0xFF);
 
-    // 8N1, default settings are OK (no parity, 1 stop bit)
-    UART1_C1 = 0x00;
+    UART1_C1 = 0x00; // 8N1
 
-    // Enable transmitter and receiver
     UART1_C2 = UART_C2_TE_MASK | UART_C2_RE_MASK;
 }
 
-// Non-blocking: returns 1 if a char is ready, 0 otherwise
 int UART1_Available(void)
 {
     return (UART1_S1 & UART_S1_RDRF_MASK) != 0;
 }
 
-// Blocking receive
 char UART1_GetChar(void)
 {
-    while (!(UART1_S1 & UART_S1_RDRF_MASK)) {
-        // wait for data
-    }
+    while (!(UART1_S1 & UART_S1_RDRF_MASK)) { }
     return UART1_D;
 }
 
-// Blocking send
 void UART1_PutChar(char c)
 {
-    while (!(UART1_S1 & UART_S1_TDRE_MASK)) {
-        // wait for transmit buffer empty
-    }
+    while (!(UART1_S1 & UART_S1_TDRE_MASK)) { }
     UART1_D = c;
 }
 
 // -----------------------------------------------------------------------------
-// Display a single digit (0–9) on PD0–PD6. PD7 (red LED) is untouched.
+// GPIO + button + LED init
 // -----------------------------------------------------------------------------
-void display_digit(uint8_t digit)
+void init_gpio(void)
 {
-    if (digit > 9) digit = 9;
+    SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK
+              |  SIM_SCGC5_PORTC_MASK
+              |  SIM_SCGC5_PORTD_MASK;
 
-    uint32_t pattern = (uint32_t)(nums[digit] & 0x7F); // bits 0–6 only
+    // PD0–PD7 as GPIO (7-seg + red LED)
+    PORTD_PCR0 = PORT_PCR_MUX(1);
+    PORTD_PCR1 = PORT_PCR_MUX(1);
+    PORTD_PCR2 = PORT_PCR_MUX(1);
+    PORTD_PCR3 = PORT_PCR_MUX(1);
+    PORTD_PCR4 = PORT_PCR_MUX(1);
+    PORTD_PCR5 = PORT_PCR_MUX(1);
+    PORTD_PCR6 = PORT_PCR_MUX(1);
+    PORTD_PCR7 = PORT_PCR_MUX(1);
 
-    // Clear PD0–PD6, keep PD7 (red LED) as is
-    uint32_t current = GPIOD_PDOR & ~0x7F;
-    GPIOD_PDOR = current | pattern;
+    GPIOD_PDDR |= 0xFF;     // all PD0–PD7 outputs
+    GPIOD_PDOR &= ~0xFF;    // clear them
+
+    // Green LED on PTC8
+    PORTC_PCR8 = PORT_PCR_MUX(1);
+    GPIOC_PDDR |= GREEN_LED_MASK;
+    GPIOC_PDOR &= ~GREEN_LED_MASK;
+
+    // Button on PTB2: GPIO input with pull-up, falling edge interrupt
+    PORTB_PCR2 = PORT_PCR_MUX(1)
+               | PORT_PCR_PE_MASK
+               | PORT_PCR_PS_MASK
+               | PORT_PCR_IRQC(0xA);   // falling edge
+
+    GPIOB_PDDR &= ~BUTTON_MASK;  // input
+
+    PORTB_ISFR = BUTTON_MASK;    // clear prior flags
+    NVIC_EnableIRQ(PORTB_IRQn);
 }
 
-// Basic delay using msTicks (not used in core logic, but handy for testing)
-void delay_ms(uint32_t ms)
+// -----------------------------------------------------------------------------
+// SysTick init: 1 ms period
+// -----------------------------------------------------------------------------
+void init_systick(void)
 {
-    uint32_t start = msTicks;
-    while ((msTicks - start) < ms) {
-        // busy-wait
-    }
+    uint32_t reload = (SYSTEM_CLOCK / 1000u) - 1u;  // 1 ms
+    SysTick->LOAD = reload;
+    SysTick->VAL  = 0;
+    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk
+                  | SysTick_CTRL_TICKINT_Msk
+                  | SysTick_CTRL_ENABLE_Msk;
 }
 
 // -----------------------------------------------------------------------------
-// main()
+// main
 // -----------------------------------------------------------------------------
 int main(void)
 {
-    // Init hardware
     init_gpio();
     init_uart1(9600);
     init_systick();
 
-    // Initial state: LOCKED
+    // Start in LOCKED state: show 9, red ON, green OFF
     currentState      = STATE_LOCKED;
-    seconds_left      = 15;
+    seconds_left      = 9;
     countdown_ms      = 0;
     countdown_active  = 0;
-    displayUpdateFlag = 1;  // draw initial digit
+    displayFlag       = 1;
+    timeoutFlag       = 0;
+    buttonFlag        = 0;
 
-    // LEDs: RED ON, GREEN OFF in LOCKED
     red_on();
     green_off();
 
-    // Main loop
     while (1) {
 
-        // 1) Handle UART receive from Arduino (unlock signal)
+        // 1) Check UART from Arduino (unlock signal '1')
         if (UART1_Available()) {
             char c = UART1_GetChar();
-
             if (c == '1' && currentState == STATE_LOCKED) {
-                // Start 15-second countdown
                 currentState      = STATE_COUNTDOWN;
-                countdown_ms      = 15000;  // 15 sec
-                seconds_left      = 15;
+                seconds_left      = 9;
+                countdown_ms      = 9000;   // 9 seconds
                 countdown_active  = 1;
-                displayUpdateFlag = 1;
+                displayFlag       = 1;
+                timeoutFlag       = 0;
 
-                // LEDs: GREEN ON, RED OFF in COUNTDOWN
                 red_off();
                 green_on();
             }
         }
 
-        // 2) Handle button press (active low on PTB2)
-        if (buttonPressedFlag) {
-            buttonPressedFlag = 0;
+        // 2) Button pressed
+        if (buttonFlag) {
+            buttonFlag = 0;
 
-            // Only relevant in COUNTDOWN and while time remains
             if (currentState == STATE_COUNTDOWN && seconds_left > 0) {
-                // Success: user pressed button before timeout.
-                // Tell Arduino to LOCK (servo back to 0 deg).
+                // Button pressed before timeout: lock now
                 UART1_PutChar('L');
 
-                // Go back to LOCKED state
                 currentState      = STATE_LOCKED;
                 countdown_active  = 0;
                 countdown_ms      = 0;
-                seconds_left      = 15;
-                displayUpdateFlag = 1;
+                seconds_left      = 9;
+                displayFlag       = 1;
 
                 red_on();
                 green_off();
             }
         }
 
-        // 3) Handle timeout (15s expired)
-        if (timeExpiredFlag) {
-            timeExpiredFlag = 0;
+        // 3) Timer expired
+        if (timeoutFlag) {
+            timeoutFlag = 0;
 
-            // Time ran out: also tell Arduino to LOCK
+            // Time ran out: lock as well
             UART1_PutChar('L');
 
             currentState      = STATE_LOCKED;
             countdown_active  = 0;
             countdown_ms      = 0;
-            seconds_left      = 15;
-            displayUpdateFlag = 1;
+            seconds_left      = 9;
+            displayFlag       = 1;
 
             red_on();
             green_off();
         }
 
         // 4) Update 7-seg display when needed
-        if (displayUpdateFlag) {
-            displayUpdateFlag = 0;
-            display_digit(seconds_left % 10);  // ones digit only, since we have 1 digit
+        if (displayFlag) {
+            displayFlag = 0;
+            display_digit(seconds_left % 10);
         }
-
-        // (No blocking delays in main; everything is event/timer driven)
     }
 }
