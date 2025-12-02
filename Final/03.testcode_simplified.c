@@ -209,7 +209,7 @@ int main(void)
 
             if (currentState == STATE_COUNTDOWN && seconds_left > 0) {
                 // Success: button pressed before timeout
-                UART1_PutChar('L');  // tell UNO to lock servo
+                UART1_PutChar('3');  // tell UNO to lock servo
 
                 currentState      = STATE_LOCKED;
                 countdown_active  = 0;
@@ -226,7 +226,7 @@ int main(void)
         if (timeoutFlag) {
             timeoutFlag = 0;
 
-            UART1_PutChar('L');  // time out: lock
+            UART1_PutChar('3');  // time out: lock
 
             currentState      = STATE_LOCKED;
             countdown_active  = 0;
