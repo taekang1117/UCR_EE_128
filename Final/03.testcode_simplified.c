@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SYSTEM_CLOCK (48000000u)  // your board is effectively running at 48 MHz
+#define SYSTEM_CLOCK (48000000u)  
 
-// 7-segment display digit patterns (common cathode, PD0–PD6)
+// 7-segment display digit patterns 
 int nums[10] = {
     0b1111110, // 0
     0b0110000, // 1
