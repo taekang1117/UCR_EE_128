@@ -20,24 +20,29 @@ int nums[10] = {
 
 typedef enum {
     STATE_LOCKED = 0,
-    STATE_UNLOCKED
+    STATE_COUNTDOWN
 } AlarmState;
 
 // --- Globals ---
-volatile uint32_t msTicks      = 0;   // 1 ms ticks from SysTick
-volatile uint8_t  displayFlag  = 0;   // set when we want to refresh 7-seg
+volatile uint32_t msTicks       = 0;   // 1 ms ticks
+volatile uint32_t countdown_ms  = 0;
+volatile uint8_t  seconds_left  = 9;
+volatile uint8_t  displayFlag   = 0;
+volatile uint8_t  buttonFlag    = 0;
+volatile uint8_t  timeoutFlag   = 0;
+volatile uint8_t  countdown_active = 0;
 
 AlarmState currentState = STATE_LOCKED;
 
 // --- GPIO masks ---
 #define RED_LED_MASK    (1u << 7)   // PTD7
 #define GREEN_LED_MASK  (1u << 8)   // PTC8
+#define BUTTON_MASK     (1u << 2)   // PTB2
 
 // Servo on PORTA pin 1
 #define SERVO_MASK      (1u << 1)   // PTA1
-
-// Servo pulse width in microseconds (1 ms = lock, 1.5 ms = unlock, tune as needed)
-volatile uint16_t servo_pulse_us = 1000;  // start locked
+// Servo pulse width in microseconds (1ms=0°, 1.5ms=90° — tune as needed)
+volatile uint16_t servo_pulse_us = 1000;
 
 // LED helpers
 static inline void red_on(void)    { GPIOD_PSOR = RED_LED_MASK; }
@@ -58,8 +63,8 @@ void display_digit(uint8_t digit)
 // ---------------- Small delay in microseconds ----------------
 static inline void delay_us(uint16_t us)
 {
-    // Approximate busy-wait using core clock.
-    // 1 us -> 48 cycles. We divide by ~4 to account for loop overhead.
+    // Approximate busy-wait.
+    // 1 us -> 48 cycles. Divide by ~4 for loop overhead.
     uint32_t cycles = (SYSTEM_CLOCK / 1000000u) * us / 4u;
     while (cycles--) {
         __NOP();
@@ -81,29 +86,56 @@ void init_servo_pin(void)
 // One 20 ms period pulse: high for servo_pulse_us, then low
 void servo_pulse_once(void)
 {
-    GPIOA_PSOR = SERVO_MASK;              // high
-    delay_us(servo_pulse_us);             // keep high for pulse width
-    GPIOA_PCOR = SERVO_MASK;              // low
+    GPIOA_PSOR = SERVO_MASK;          // high
+    delay_us(servo_pulse_us);         // high for pulse width
+    GPIOA_PCOR = SERVO_MASK;          // low
 }
 
 // Position functions - adjust pulse widths if needed
 void servo_lock_position(void)
 {
-    servo_pulse_us = 1000;    // ~1 ms pulse (tune for your servo "locked" angle)
+    // ~1.0 ms pulse ≈ 0°
+    servo_pulse_us = 1000;
 }
 
 void servo_unlock_position(void)
 {
-    servo_pulse_us = 1500;    // ~1.5 ms pulse (tune for "unlocked" angle)
+    // ~1.5 ms pulse ≈ 90°
+    servo_pulse_us = 1500;
 }
 
 // ---------------- SysTick (1 ms) ----------------
 void SysTick_Handler(void)
 {
     msTicks++;
+
+    if (countdown_active && currentState == STATE_COUNTDOWN) {
+        if (countdown_ms > 0) {
+            countdown_ms--;
+
+            if ((countdown_ms % 1000u) == 0u && seconds_left > 0) {
+                seconds_left--;
+                displayFlag = 1;
+
+                if (seconds_left == 0 && countdown_ms == 0) {
+                    timeoutFlag = 1;
+                    countdown_active = 0;
+                }
+            }
+        }
+    }
 }
 
-// ---------------- UART1 (PTC3 RX, PTC4 TX) ----------------
+// ---------------- Button interrupt (PTB2, active low) ----------------
+void PORTB_IRQHandler(void)
+{
+    if (PORTB_ISFR & BUTTON_MASK) {
+        PORTB_ISFR = BUTTON_MASK;
+        buttonFlag = 1;
+    }
+}
+
+// ---------------- UART1 (PTC3 RX only) ----------------
 void init_uart1(uint32_t baudrate)
 {
     SIM_SCGC4 |= SIM_SCGC4_UART1_MASK;
@@ -119,8 +151,8 @@ void init_uart1(uint32_t baudrate)
     UART1_BDH = (UART1_BDH & ~UART_BDH_SBR_MASK) | ((sbr >> 8) & UART_BDH_SBR_MASK);
     UART1_BDL = (uint8_t)(sbr & 0xFF);
 
-    UART1_C1 = 0x00;                       // 8N1
-    UART1_C2 = UART_C2_RE_MASK;           // only RX enabled now (one-way UART)
+    UART1_C1 = 0x00;                // 8N1
+    UART1_C2 = UART_C2_RE_MASK;     // ONLY RX enabled (one-way UART: UNO -> K64F)
 }
 
 int UART1_Available(void)
@@ -134,7 +166,7 @@ char UART1_GetChar(void)
     return UART1_D;
 }
 
-// ---------------- GPIO init (LEDs + 7-seg + servo) ----------------
+// ---------------- GPIO init ----------------
 void init_gpio(void)
 {
     SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK
@@ -159,6 +191,15 @@ void init_gpio(void)
     GPIOC_PDDR |= GREEN_LED_MASK;
     GPIOC_PDOR &= ~GREEN_LED_MASK;
 
+    // Button PTB2, GPIO input, pull-up, falling-edge interrupt
+    PORTB_PCR2 = PORT_PCR_MUX(1)
+               | PORT_PCR_PE_MASK
+               | PORT_PCR_PS_MASK
+               | PORT_PCR_IRQC(0xA); // falling edge
+    GPIOB_PDDR &= ~BUTTON_MASK;
+    PORTB_ISFR = BUTTON_MASK;
+    NVIC_EnableIRQ(PORTB_IRQn);
+
     // Servo pin PTA1
     init_servo_pin();
 }
@@ -166,7 +207,7 @@ void init_gpio(void)
 // ---------------- SysTick init ----------------
 void init_systick(void)
 {
-    uint32_t reload = (SYSTEM_CLOCK / 1000u) - 1u; // 1 ms
+    uint32_t reload = (SYSTEM_CLOCK / 1000u) - 1u;
     SysTick->LOAD = reload;
     SysTick->VAL  = 0;
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk
@@ -181,41 +222,87 @@ int main(void)
     init_uart1(9600);
     init_systick();
 
-    // Start LOCKED
-    currentState = STATE_LOCKED;
-    servo_lock_position();
+    // Start LOCKED: show 9, red ON, green OFF, servo at 0°
+    currentState      = STATE_LOCKED;
+    seconds_left      = 9;
+    countdown_ms      = 0;
+    countdown_active  = 0;
+    displayFlag       = 1;
+    timeoutFlag       = 0;
+    buttonFlag        = 0;
+
     red_on();
     green_off();
-    display_digit(9);     // show 9 when locked
+    servo_lock_position();   // 0° at startup
+
+    // Optional: give servo a moment at startup (a few pulses)
+    for (int i = 0; i < 50; i++) { // ~1 second of pulses
+        servo_pulse_once();
+        // ~20 ms between pulses
+        for (volatile uint32_t d = 0; d < 20000; ++d) { __NOP(); }
+    }
 
     uint32_t lastServoPulseMs = 0;
 
     while (1) {
 
-        // --- 1) Handle UART: toggle on '1' ---
-        if (UART1_Available()) {
+        // --- 1) UART: '1' while LOCKED starts countdown and unlocks servo ---
+        if (currentState == STATE_LOCKED && UART1_Available()) {
             char c = UART1_GetChar();
-
             if (c == '1') {
-                if (currentState == STATE_LOCKED) {
-                    // Go to UNLOCKED
-                    currentState = STATE_UNLOCKED;
-                    servo_unlock_position();
-                    red_off();
-                    green_on();
-                    display_digit(0);     // show 0 when unlocked (your choice)
-                } else {
-                    // UNLOCKED -> LOCKED
-                    currentState = STATE_LOCKED;
-                    servo_lock_position();
-                    red_on();
-                    green_off();
-                    display_digit(9);     // show 9 when locked
-                }
+                currentState      = STATE_COUNTDOWN;
+                seconds_left      = 9;
+                countdown_ms      = 9000;      // 9 seconds
+                countdown_active  = 1;
+                displayFlag       = 1;
+                timeoutFlag       = 0;
+
+                red_off();
+                green_on();
+                servo_unlock_position();       // 90° during countdown
             }
         }
 
-        // --- 2) Servo refresh: send one pulse every ~20 ms ---
+        // --- 2) Button pressed during COUNTDOWN (success) ---
+        if (buttonFlag) {
+            buttonFlag = 0;
+
+            if (currentState == STATE_COUNTDOWN && seconds_left > 0) {
+                // Success: button pressed before timeout
+                currentState      = STATE_LOCKED;
+                countdown_active  = 0;
+                countdown_ms      = 0;
+                seconds_left      = 9;
+                displayFlag       = 1;
+
+                red_on();
+                green_off();
+                servo_lock_position();        // back to 0°
+            }
+        }
+
+        // --- 3) Timer expired (failure) ---
+        if (timeoutFlag) {
+            timeoutFlag = 0;
+
+            currentState      = STATE_LOCKED;
+            countdown_active  = 0;
+            countdown_ms      = 0;
+            seconds_left      = 9;
+            displayFlag       = 1;
+
+            red_on();
+            green_off();
+            servo_lock_position();            // also back to 0°
+        }
+
+        // --- 4) Update display when needed ---
+        if (displayFlag) {
+            displayFlag = 0;
+            display_digit(seconds_left % 10);
+        }
+
+        // --- 5) Servo refresh: one pulse every ~20 ms ---
         if ((msTicks - lastServoPulseMs) >= 20u) {
             lastServoPulseMs = msTicks;
             servo_pulse_once();
