@@ -4,9 +4,9 @@
 
 #define SYSTEM_CLOCK (48000000u)  
 // ----- Servo on PTA1 using FTM0_CH6 -----
-#define SERVO_MIN_PULSE_TICKS  (375u)  // ~1.0 ms at 48 MHz / 128
-#define SERVO_90_PULSE_TICKS   (563u)  // ~1.5 ms at 48 MHz / 128
-#define SERVO_FTM_MOD          (7499u) // 20 ms period (50 Hz) at 48 MHz / 128
+#define SERVO_MIN_PULSE_TICKS   (375u)  // ~1.0 ms
+#define SERVO_UNLOCK_PULSE_TICKS (800u) // ~2.13 ms (big move from 1.0 ms)
+#define SERVO_FTM_MOD           (7499u) // 20 ms
 
 // 7-segment display digit patterns 
 int nums[10] = {
@@ -48,6 +48,14 @@ static inline void red_on(void)    { GPIOD_PSOR = RED_LED_MASK; }
 static inline void red_off(void)   { GPIOD_PCOR = RED_LED_MASK; }
 static inline void green_on(void)  { GPIOC_PSOR = GREEN_LED_MASK; }
 static inline void green_off(void) { GPIOC_PCOR = GREEN_LED_MASK; }
+
+void delay_ms(uint32_t ms)
+{
+    uint32_t start = msTicks;
+    while ((msTicks - start) < ms) {
+        // busy wait
+    }
+}
 
 // 7-seg display: PD0–PD6 segments, PD7 is LED
 void display_digit(uint8_t digit)
@@ -164,14 +172,14 @@ void init_servo(void)
 
 static inline void servo_set_locked(void)
 {
-    // 0 degrees -> ~1.0 ms pulse
+    // 0 degrees (locked) -> ~1.0 ms pulse
     FTM0_C6V = SERVO_MIN_PULSE_TICKS;
 }
 
 static inline void servo_set_unlocked(void)
 {
-    // 90 degrees -> ~1.5 ms pulse
-    FTM0_C6V = SERVO_90_PULSE_TICKS;
+    // Large move from locked position (~2.1 ms pulse)
+    FTM0_C6V = SERVO_UNLOCK_PULSE_TICKS;
 }
 
 // ---------------- GPIO init ----------------
@@ -221,6 +229,26 @@ void init_systick(void)
 }
 
 // ---------------- main ----------------
+// int main(void)
+// {
+//     init_gpio();
+//     init_uart1(9600);
+//     init_systick();
+//     init_servo();
+
+//     // Start LOCKED: show 9, red ON, green OFF
+//     currentState      = STATE_LOCKED;
+//     seconds_left      = 9;
+//     countdown_ms      = 0;
+//     countdown_active  = 0;
+//     displayFlag       = 1;
+//     timeoutFlag       = 0;
+//     buttonFlag        = 0;
+
+//     red_on();
+//     green_off();
+//     servo_set_locked();
+
 int main(void)
 {
     init_gpio();
@@ -240,6 +268,20 @@ int main(void)
     red_on();
     green_off();
     servo_set_locked();
+    display_digit(9);
+
+    // ---------- SERVO DEBUG TEST ----------
+    // 1) Hold locked for 2s
+    delay_ms(2000);
+
+    // 2) Move to unlocked for 2s
+    servo_set_unlocked();
+    delay_ms(2000);
+
+    // 3) Move back to locked for 2s
+    servo_set_locked();
+    delay_ms(2000);
+    // ---------- END SERVO DEBUG TEST ----------
   
     while (1) {
 
