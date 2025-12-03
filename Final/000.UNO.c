@@ -1,75 +1,66 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-#define SS_PIN   10   // SDA/SS pin on RFID module
-#define RST_PIN   9   // RST pin on RFID module
+// --- Pin definitions ---
+#define SS_PIN   10    // RFID SDA/SS
+#define RST_PIN   9    // RFID RST
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
-// --- Your valid key fob/card UID (replace with your real one) ---
-const byte allowedUID[] = { 0xDE, 0xAD, 0xBE, 0xEF };  // example
-const byte allowedUIDSize = sizeof(allowedUID);
+// --- Your valid key fob/card UID ---
+// From your debug output: FB A8 C9 06
+const byte allowedUID[] = { 0xFB, 0xA8, 0xC9, 0x06 };
+const byte allowedUIDLength = 4;
 
-// Cooldown between sends
-unsigned long lastSendTime = 0;
-const unsigned long cooldownMs = 500;   // 0.5 seconds
+unsigned long lastCardTime = 0;     // to avoid spamming reads
+const unsigned long cardCooldownMs = 500;  // 0.5s ignore after a read
 
-// Compare card UID with allowedUID
-bool isAllowedCard(const MFRC522::Uid &uid) {
-  if (uid.size != allowedUIDSize) {
-    return false;
-  }
-  for (byte i = 0; i < uid.size; i++) {
-    if (uid.uidByte[i] != allowedUID[i]) {
+// ------------------------------------------------------------------
+// Helper: compare card UID with allowedUID
+// ------------------------------------------------------------------
+bool isAllowedCard(const byte *uid, byte uidSize) {
+  if (uidSize != allowedUIDLength) return false;
+  for (byte i = 0; i < uidSize; i++) {
+    if (uid[i] != allowedUID[i]) {
       return false;
     }
   }
   return true;
 }
 
+// ------------------------------------------------------------------
+// Setup
+// ------------------------------------------------------------------
 void setup() {
-  Serial.begin(9600);        // Must match K64F UART1 baud
+  // UART to K64F (set same baud on K64F)
+  Serial.begin(9600);
+
+  // RFID init
   SPI.begin();
   mfrc522.PCD_Init();
-
-  // Optional debug (only visible if Arduino is connected to PC, not K64F)
-  Serial.println("RFID Arduino: ready to send '1' on valid key fob.");
 }
 
+// ------------------------------------------------------------------
+// Main loop
+// ------------------------------------------------------------------
 void loop() {
-  // 1) Check for a new card
-  if (!mfrc522.PICC_IsNewCardPresent()) {
-    return;
-  }
-  if (!mfrc522.PICC_ReadCardSerial()) {
+  // Simple cooldown so we don't re-trigger repeatedly with one tap
+  if (millis() - lastCardTime < cardCooldownMs) {
     return;
   }
 
-  // 2) We have a UID; check if it's allowed
-  bool ok = isAllowedCard(mfrc522.uid);
+  // Check for new RFID card
+  if (!mfrc522.PICC_IsNewCardPresent()) return;
+  if (!mfrc522.PICC_ReadCardSerial())   return;
 
-  if (ok) {
-    unsigned long now = millis();
+  lastCardTime = millis();   // mark last successful read
 
-    // 3) Enforce 0.5s cooldown between sends
-    if (now - lastSendTime >= cooldownMs) {
-      lastSendTime = now;
-
-      // Send ASCII '1' to K64F
-      Serial.write('1');    // <-- this is what K64F sees on UART RX
-
-      // Optional: debug to Serial Monitor
-      Serial.println("Sent '1' to K64F (valid key fob).");
-    } else {
-      // Optional: debug for cooldown hits
-      // Serial.println("Valid card but in cooldown; not sending.");
-    }
-  } else {
-    // Optional: debug for invalid card
-    // Serial.println("Unknown card; not sending.");
+  if (isAllowedCard(mfrc522.uid.uidByte, mfrc522.uid.size)) {
+    // Send '1' via UART when correct key fob is presented
+    Serial.write('1');
   }
 
-  // 4) Stop communication with this card
+  // Halt communication with this card
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
 }
