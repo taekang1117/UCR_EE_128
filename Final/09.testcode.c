@@ -85,10 +85,8 @@ void SysTick_Handler(void)
 }
 
 // ---------------- Button interrupt (PTB2, active low, FALLING EDGE) ----------------
-// ⚠️ MODIFIED ISR: Contains state change logic, LED control, and servo control.
 void PORTB_IRQHandler(void)
 {
-    // Check for button interrupt
     if (PORTB_ISFR & BUTTON_MASK) {
         // Clear interrupt status flag by writing 1
         PORTB_ISFR = BUTTON_MASK;
@@ -109,14 +107,6 @@ void PORTB_IRQHandler(void)
             green_off();
             servo_set_locked();
             
-            // Use a flag for UART, since UART involves waiting for TDRE and 
-            // is a relatively slow operation (better to do in main loop)
-            // Here we re-purpose buttonFlag to be a "UART_TX_FLAG" (we'll rename it later)
-            // For now, we'll introduce a new flag for clarity:
-            // We need to re-introduce a flag for the main loop to handle the UART TX
-            // The original 'buttonFlag' is no longer a simple 'button pressed' flag
-            // Let's use a new flag for the UART TX requirement.
-            // For this example, we'll re-introduce buttonFlag for the UART requirement:
             buttonFlag = 1; 
         }
     }
