@@ -1,0 +1,74 @@
+#define F_BUS                    48000000u
+#define FTM0_OVERFLOW_FREQUENCY  50u      // 50 Hz (20 ms)
+#define FTM0_CLK_PRESCALE        7        // PS = 7 -> divide by 128
+
+// Pulse widths in seconds
+#define PULSE_WIDTH_LOW_SEC      0.001f   // 1.0 ms  -> 0°
+#define PULSE_WIDTH_HIGH_SEC     0.002f   // 2.0 ms  -> 90° or 180°
+
+uint32_t High_Count;
+uint32_t Low_Count;
+uint32_t Total_Count;
+
+void Init_PWM_Servo(void)
+{
+    // Enable FTM0 clock
+    SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK;
+
+    // Route FTM0_CH3 to some pin; here example PTC4 (check your K64 pin mux!)
+    SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;
+    PORTC_PCR4 = PORT_PCR_MUX(4) | PORT_PCR_DSE_MASK;  // ALT4 = FTM0_CH3 on many K64 packages
+
+    // Disable write protection
+    FTM0_MODE |= FTM_MODE_WPDIS_MASK;
+    FTM0_MODE &= ~1;  // clear FTMEN if needed
+
+    // No quadrature decode
+    FTM0_QDCTRL &= ~FTM_QDCTRL_QUADEN_MASK;
+
+    // Reset counter
+    FTM0_CNT = 0;
+    FTM0_CNTIN = 0;
+
+    // Compute MOD for 50 Hz
+    uint32_t prescale_div = 1u << FTM0_CLK_PRESCALE;  // 2^PS
+    FTM0_MOD = (F_BUS / prescale_div) / FTM0_OVERFLOW_FREQUENCY;
+
+    // Compute counts corresponding to 1 ms and 2 ms pulses
+    float period_sec = 1.0f / (float)FTM0_OVERFLOW_FREQUENCY;        // 0.02 s
+    float duty_high  = PULSE_WIDTH_HIGH_SEC / period_sec;            // 0.002/0.02 = 0.10
+    float duty_low   = PULSE_WIDTH_LOW_SEC  / period_sec;            // 0.001/0.02 = 0.05
+
+    High_Count  = (uint32_t)(FTM3_MOD * duty_high); // about 10% of MOD
+    Low_Count   = (uint32_t)(FTM3_MOD * duty_low);  // about  5% of MOD
+    Total_Count = High_Count - Low_Count;           // spread over 0°..90° (or 0..180°)
+
+    // Configure CH3 for edge-aligned, high-true PWM
+    FTM3_C3SC = 0;
+    FTM3_C3SC = FTM_CnSC_MSB_MASK | FTM_CnSC_ELSB_MASK;
+
+    // Start at one endpoint, e.g. full right (0°)
+    FTM0_C3V = Low_Count;
+
+    // Turn timer off while configuring SC
+    FTM3_SC = 0;
+
+    // Optional: enable overflow interrupt
+    // FTM3_SC = 0x4F;
+    // enable_irq(62); etc.
+}
+
+void PWM_Servo_Angle(float Angle)  // Angle in 0..90
+{
+    if (Angle < 0.0f)   Angle = 0.0f;
+    if (Angle > 90.0f)  Angle = 90.0f;
+
+    // Same math as your example:
+    //   0°  -> High_Count (one extreme)
+    //   90° -> Low_Count  (other extreme)
+    float scale = High_Count - Total_Count * (Angle / 90.0f);
+
+    FTM0_C3V = (uint32_t)scale;
+}
+
+    NVIC_EnableIRQ(FTM3_IRQn);
