@@ -70,7 +70,7 @@ void Init_PWM_Servo(void)
     // Edge-aligned PWM, high-true on CH3
     FTM0_C3SC = FTM_CnSC_MSB_MASK | FTM_CnSC_ELSB_MASK;
 
-    // Start at 0°
+    // Start at 0
     FTM0_C3V = Low_Count;
 
     // System clock, /128, no interrupts required
@@ -82,7 +82,7 @@ void PWM_Servo_Angle(float angle_deg)
     if (angle_deg < 0.0f)   angle_deg = 0.0f;
     if (angle_deg > 90.0f)  angle_deg = 90.0f; // or 180 if you want
 
-    // Map 0..90 → High_Count..Low_Count (or vice versa)
+    // Map 0..90 High_Count..Low_Count (or vice versa)
     float scale = High_Count - Total_Count * (angle_deg / 90.0f);
     FTM0_C3V = (uint32_t)scale;
 }
@@ -94,13 +94,13 @@ int main(void)
     Init_PWM_Servo();    // FTM0 PWM for servo
 
     float current_angle = 0.0f;
-    PWM_Servo_Angle(current_angle);  // start at 0°
+    PWM_Servo_Angle(current_angle);  // start at 0
 
     while (1) {
         if (buttonFlag) {
             buttonFlag = 0;
 
-            // Example: toggle between 0° and 90°
+            // Example: toggle between 0 and 90
             if (current_angle < 45.0f) {
                 current_angle = 90.0f;
             } else {
