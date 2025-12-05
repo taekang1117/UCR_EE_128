@@ -30,16 +30,56 @@ void init_button_irq(void)
 void PORTB_IRQHandler(void)
 {
     if (PORTB_ISFR & BUTTON_MASK) {
-        PORTB_ISFR = BUTTON_MASK;  // clear IRQ flag
+        PORTB_ISFR = BUTTON_MASK;   // clear IRQ flag
 
-        uint32_t now = msTicks;    // from SysTick 1ms
+        uint32_t now = msTicks;     // from FTM1
         if ((now - last_button_ms) >= BUTTON_DEBOUNCE_MS) {
             last_button_ms = now;
-            buttonFlag = 1;        // signal main code
+            buttonFlag = 1;         // signal main loop
         }
     }
 }
 
+volatile uint32_t msTicks = 0;   // global millisecond counter
+
+void init_ftm1_tick(void)
+{
+    // Enable clock to FTM1
+    SIM_SCGC6 |= SIM_SCGC6_FTM1_MASK;
+
+    // Disable write protection
+    FTM1_MODE |= FTM_MODE_WPDIS_MASK;
+
+    // Turn off timer while configuring
+    FTM1_SC = 0;
+    FTM1_CNTIN = 0;
+    FTM1_CNT  = 0;
+
+    // Set modulo so overflow occurs every 1 ms
+    // 48 MHz / 32 = 1.5 MHz -> 1.5e6 / 1000 = 1500 counts
+    FTM1_MOD = 1500 - 1;  // 1499
+
+    // Clear TOF
+    FTM1_SC &= ~FTM_SC_TOF_MASK;
+
+    // Enable overflow interrupt and start with system clock, prescaler /32
+    FTM1_SC = FTM_SC_TOIE_MASK        // enable overflow IRQ
+            | FTM_SC_CLKS(1)          // system clock
+            | FTM_SC_PS(5);           // prescaler = 5 => /32
+
+    // Enable FTM1 interrupt at NVIC
+    NVIC_EnableIRQ(FTM1_IRQn);
+}
+
+// FTM1 interrupt: 1 ms tick
+void FTM1_IRQHandler(void)
+{
+    // Check overflow flag
+    if (FTM1_SC & FTM_SC_TOF_MASK) {
+        FTM1_SC &= ~FTM_SC_TOF_MASK;  // clear flag
+        msTicks++;                    // increment ms counter
+    }
+}
 
 
 void Init_PWM_Servo(void)
