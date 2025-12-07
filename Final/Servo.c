@@ -1,154 +1,83 @@
 #include "fsl_device_registers.h"
-
-#define BUTTON_MASK (1u << 2)  // PTB2
-
-volatile uint8_t buttonFlag = 0;
-volatile uint32_t last_button_ms = 0;
-const uint32_t BUTTON_DEBOUNCE_MS = 50;
+#include <stdint.h>
 
 #define F_BUS                   48000000u
-#define FTM0_OVERFLOW_FREQUENCY 50u
-#define FTM0_CLK_PRESCALE       7       // ÷128
+#define FTM0_OVERFLOW_FREQUENCY 50u        // 50 Hz (20 ms)
+#define FTM0_CLK_PRESCALE       7          // prescaler = 7 => divide by 128
 
 uint32_t High_Count, Low_Count, Total_Count;
 
-void init_button_irq(void)
+// crude blocking delay (1 ms * ms at 48 MHz)
+// not precise, but fine for a simple servo test
+static void delay_loop(volatile unsigned long count)
 {
-    SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
-
-    PORTB_PCR2 = PORT_PCR_MUX(1)
-               | PORT_PCR_PE_MASK     // pull enable
-               | PORT_PCR_PS_MASK     // pull-up
-               | PORT_PCR_IRQC(0xA);  // falling edge
-
-    GPIOB_PDDR &= ~BUTTON_MASK;       // input
-
-    PORTB_ISFR = BUTTON_MASK;         // clear flag
-    NVIC_EnableIRQ(PORTB_IRQn);
-}
-
-void PORTB_IRQHandler(void)
-{
-    if (PORTB_ISFR & BUTTON_MASK) {
-        PORTB_ISFR = BUTTON_MASK;   // clear IRQ flag
-
-        uint32_t now = msTicks;     // from FTM1
-        if ((now - last_button_ms) >= BUTTON_DEBOUNCE_MS) {
-            last_button_ms = now;
-            buttonFlag = 1;         // signal main loop
-        }
+    while (count--)
+    {
+        __asm("NOP");
     }
 }
-
-volatile uint32_t msTicks = 0;   // global millisecond counter
-
-void init_ftm1_tick(void)
-{
-    // Enable clock to FTM1
-    SIM_SCGC6 |= SIM_SCGC6_FTM1_MASK;
-
-    // Disable write protection
-    FTM1_MODE |= FTM_MODE_WPDIS_MASK;
-
-    // Turn off timer while configuring
-    FTM1_SC = 0;
-    FTM1_CNTIN = 0;
-    FTM1_CNT  = 0;
-
-    // Set modulo so overflow occurs every 1 ms
-    // 48 MHz / 32 = 1.5 MHz -> 1.5e6 / 1000 = 1500 counts
-    FTM1_MOD = 1500 - 1;  // 1499
-
-    // Clear TOF
-    FTM1_SC &= ~FTM_SC_TOF_MASK;
-
-    // Enable overflow interrupt and start with system clock, prescaler /32
-    FTM1_SC = FTM_SC_TOIE_MASK        // enable overflow IRQ
-            | FTM_SC_CLKS(1)          // system clock
-            | FTM_SC_PS(5);           // prescaler = 5 => /32
-
-    // Enable FTM1 interrupt at NVIC
-    NVIC_EnableIRQ(FTM1_IRQn);
-}
-
-// FTM1 interrupt: 1 ms tick
-void FTM1_IRQHandler(void)
-{
-    // Check overflow flag
-    if (FTM1_SC & FTM_SC_TOF_MASK) {
-        FTM1_SC &= ~FTM_SC_TOF_MASK;  // clear flag
-        msTicks++;                    // increment ms counter
-    }
-}
-
 
 void Init_PWM_Servo(void)
 {
+    // Enable clocks for FTM0 and PORTC (for PTC4)
     SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK;
     SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;
 
-    // Example: FTM0_CH3 on PTC4 (check reference manual / your board)
-    PORTC_PCR4 = PORT_PCR_MUX(4) | PORT_PCR_DSE_MASK;
+    // PTA1 as FTM0_CH6
+       PORTA_PCR1 = PORT_PCR_MUX(3) | PORT_PCR_DSE_MASK;
 
+    // Disable write protection
     FTM0_MODE |= FTM_MODE_WPDIS_MASK;
     FTM0_MODE &= ~1;          // clear FTMEN if needed
 
+    // Reset counter
     FTM0_CNT   = 0;
     FTM0_CNTIN = 0;
 
+    // Set MOD for 50 Hz PWM
     uint32_t prescale_div = 1u << FTM0_CLK_PRESCALE;
     FTM0_MOD = (F_BUS / prescale_div) / FTM0_OVERFLOW_FREQUENCY;
 
+    // Compute counts for 1 ms and 2 ms pulses
     float period_sec = 1.0f / (float)FTM0_OVERFLOW_FREQUENCY; // 0.02 s
-    float duty_low   = 0.001f / period_sec;  // 1 ms
-    float duty_high  = 0.002f / period_sec;  // 2 ms
+    float duty_low   = 0.001f / period_sec;   // 1 ms  -> 5 duty
+    float duty_high  = 0.002f / period_sec;   // 2 ms  -> 10 duty
 
-    Low_Count   = (uint32_t)(FTM0_MOD * duty_low);
-    High_Count  = (uint32_t)(FTM0_MOD * duty_high);
-    Total_Count = High_Count - Low_Count;
+    Low_Count   = (uint32_t)(FTM0_MOD * duty_low);   // 375
+    High_Count  = (uint32_t)(FTM0_MOD * duty_high);  // 750
+    Total_Count = High_Count - Low_Count;            // 375 span
 
-    // Edge-aligned PWM, high-true on CH3
+    // Edge-aligned, high-true PWM on CH3
     FTM0_C3SC = FTM_CnSC_MSB_MASK | FTM_CnSC_ELSB_MASK;
 
-    // Start at 0
+    // Start at 0 (1 ms pulse)
     FTM0_C3V = Low_Count;
 
-    // System clock, /128, no interrupts required
+    // System clock, prescaler /128, no interrupts
     FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(FTM0_CLK_PRESCALE);
 }
 
 void PWM_Servo_Angle(float angle_deg)
 {
     if (angle_deg < 0.0f)   angle_deg = 0.0f;
-    if (angle_deg > 90.0f)  angle_deg = 90.0f; // or 180 if you want
+    if (angle_deg > 90.0f)  angle_deg = 90.0f;   // change to 180.0f if you want 0–180
 
-    // Map 0..90 High_Count..Low_Count (or vice versa)
-    float scale = High_Count - Total_Count * (angle_deg / 90.0f);
+    // Map 0..90  Low_Count..High_Count (or reverse if direction is flipped)
+    float scale = Low_Count + Total_Count * (angle_deg / 90.0f);
     FTM0_C3V = (uint32_t)scale;
 }
 
 int main(void)
 {
-    init_systick();      // for msTicks
-    init_button_irq();   // falling-edge IRQ on button
-    Init_PWM_Servo();    // FTM0 PWM for servo
-
-    float current_angle = 0.0f;
-    PWM_Servo_Angle(current_angle);  // start at 0
+    Init_PWM_Servo();
 
     while (1) {
-        if (buttonFlag) {
-            buttonFlag = 0;
+        // 0 degrees
+        PWM_Servo_Angle(0.0f);
+        delay_loop(1000);          // 1 second
 
-            // Example: toggle between 0 and 90
-            if (current_angle < 45.0f) {
-                current_angle = 90.0f;
-            } else {
-                current_angle = 0.0f;
-            }
-            PWM_Servo_Angle(current_angle);
-        }
-
-        // other state machine stuff / UART here...
+        // 90 degrees
+        PWM_Servo_Angle(90.0f);
+        delay_loop(1000);          // 1 second
     }
 }
