@@ -21,8 +21,6 @@ uint32_t btn_fall_count   = 0;
 uint32_t last_button_ms     = 0; // this is for debouncing
 uint32_t    BUTTON_DEBOUNCE_MS = 50;
 
-
-
 // 7-segment display digit patterns 
 int nums[10] = {
     0b1111110, // 0
