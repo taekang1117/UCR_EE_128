@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SYSTEM_CLOCK (48000000u)  
+#define SYSTEM_CLOCK (48000000u)  // 48 MHZ
 
-// --- Button debug / flags ---
+// for button interrupt and debouncing
 uint8_t  buttonFlag       = 0;  
 uint8_t  btn_fall_flag    = 0;   
 uint32_t btn_fall_time_ms = 0;  
@@ -13,7 +13,7 @@ uint32_t btn_fall_count   = 0;
 volatile uint32_t last_button_ms     = 0; // debounce
 const uint32_t    BUTTON_DEBOUNCE_MS = 50;
 
-// 7-segment display digit patterns 
+// 7 segment dijsplay 
 int nums[10] = {
     0b1111110, // 0
     0b0110000, // 1
@@ -27,12 +27,14 @@ int nums[10] = {
     0b1111011  // 9
 };
 
+
+// 2 states mahine
 typedef enum {
     STATE_LOCKED = 0,
     STATE_COUNTDOWN
 } AlarmState;
 
-// --- Globals ---
+// global variables 
 volatile uint32_t msTicks       = 0;
 volatile uint32_t countdown_ms  = 0;
 volatile uint8_t  seconds_left  = 9;
@@ -43,18 +45,18 @@ volatile uint8_t  countdown_active = 0;
 
 AlarmState currentState = STATE_LOCKED;
 
-// --- GPIO masks ---
+// gpio init
 #define RED_LED_MASK    (1u << 7)   // PTD7
 #define GREEN_LED_MASK  (1u << 8)   // PTC8
 #define BUTTON_MASK     (1u << 2)   // PTB2
 
-// LED helpers
+// led herlper
 static inline void red_on(void)    { GPIOD_PSOR = RED_LED_MASK; }
 static inline void red_off(void)   { GPIOD_PCOR = RED_LED_MASK; }
 static inline void green_on(void)  { GPIOC_PSOR = GREEN_LED_MASK; }
 static inline void green_off(void) { GPIOC_PCOR = GREEN_LED_MASK; }
 
-// 7-seg display: PD0–PD6 segments, PD7 is LED
+// display it 7 segment
 void display_digit(uint8_t digit)
 {
     if (digit > 9) digit = 9;
@@ -64,7 +66,7 @@ void display_digit(uint8_t digit)
     GPIOD_PDOR = current | pattern;
 }
 
-// ---------------- SysTick (1 ms) ----------------
+// sys tick 1ms 
 void SysTick_Handler(void)
 {
     msTicks++;
@@ -86,7 +88,8 @@ void SysTick_Handler(void)
     }
 }
 
-// ---------------- Button interrupt (PTB2, active low) ----------------
+
+// button interrupt 
 void PORTB_IRQHandler(void)
 {
     uint32_t flags = PORTB_ISFR;
@@ -101,8 +104,6 @@ void PORTB_IRQHandler(void)
             {
                 last_button_ms = now;
                 buttonFlag = 1;      
-                
-                // 5) For debug:
                 btn_fall_flag    = 1;
                 btn_fall_time_ms = now;
                 btn_fall_count++;
@@ -148,14 +149,14 @@ void UART1_PutChar(char c)
     UART1_D = c;
 }
 
-// ---------------- GPIO init ----------------
+// gpio init
 void init_gpio(void)
 {
     SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK
               |  SIM_SCGC5_PORTC_MASK
               |  SIM_SCGC5_PORTD_MASK;
 
-    // PD0–PD7: 7-seg + red LED
+    // PD0–PD7: 7-seg
     PORTD_PCR0 = PORT_PCR_MUX(1);
     PORTD_PCR1 = PORT_PCR_MUX(1);
     PORTD_PCR2 = PORT_PCR_MUX(1);
@@ -165,14 +166,14 @@ void init_gpio(void)
     PORTD_PCR6 = PORT_PCR_MUX(1);
     PORTD_PCR7 = PORT_PCR_MUX(1);
     GPIOD_PDDR |= 0xFF;
-    GPIOD_PDOR &= ~0xFF;   // all low
+    GPIOD_PDOR &= ~0xFF;   // start from low 
 
     // Green LED on PTC8
     PORTC_PCR8 = PORT_PCR_MUX(1);
     GPIOC_PDDR |= GREEN_LED_MASK;
     GPIOC_PDOR &= ~GREEN_LED_MASK;
 
-    // Button PTB2, GPIO input, pull-up, falling-edge interrupt
+    // pull-up, falling-edge interrupt
     PORTB_PCR2 = PORT_PCR_MUX(1)
                | PORT_PCR_PE_MASK
                | PORT_PCR_PS_MASK
@@ -182,7 +183,7 @@ void init_gpio(void)
     NVIC_EnableIRQ(PORTB_IRQn);
 }
 
-// ---------------- SysTick init ----------------
+// sys tick init
 void init_systick(void)
 {
     uint32_t reload = (SYSTEM_CLOCK / 1000u) - 1u;
@@ -193,19 +194,17 @@ void init_systick(void)
                   | SysTick_CTRL_ENABLE_Msk;
 }
 
-// ---------------- main ----------------
 int main(void)
 {
     init_gpio();
     init_uart1(9600);
     init_systick();
 
-    // Start LOCKED: show 9, red ON, green OFF
     currentState      = STATE_LOCKED;
     seconds_left      = 9;
     countdown_ms      = 0;
     countdown_active  = 0;
-    displayFlag       = 1;
+    displayFlag       = 1; // flag it 1
     timeoutFlag       = 0;
     buttonFlag        = 0;
 
@@ -214,9 +213,9 @@ int main(void)
 
     while (1) {
 
-        // --- 1) UART: any byte while LOCKED starts countdown ---
+        // UART: any byte while LOCKED starts countdown 
         if (currentState == STATE_LOCKED && UART1_Available()) {
-            (void)UART1_GetChar();  // discard value, just acknowledge
+            (void)UART1_GetChar();  // garbage value
             currentState      = STATE_COUNTDOWN;
             seconds_left      = 9;
             countdown_ms      = 9000;      // 9 seconds
@@ -228,12 +227,11 @@ int main(void)
             green_on();
         }
 
-        // --- 2) Button pressed during COUNTDOWN ---
+        // if pressed during count down
         if (buttonFlag) {
             buttonFlag = 0;
 
             if (currentState == STATE_COUNTDOWN && seconds_left > 0) {
-                // Success: button pressed before timeout
                 UART1_PutChar('3');  // tell UNO to lock servo
 
                 currentState      = STATE_LOCKED;
@@ -247,7 +245,7 @@ int main(void)
             }
         }
 
-        // --- 3) Timer expired ---
+        // timer expired
         if (timeoutFlag) {
             timeoutFlag = 0;
 
@@ -263,7 +261,7 @@ int main(void)
             green_off();
         }
 
-        // --- 4) Update display when needed ---
+        // update display 
         if (displayFlag) {
             displayFlag = 0;
             display_digit(seconds_left % 10);
