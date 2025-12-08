@@ -10,22 +10,17 @@
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 Servo lockServo;
 
-// --- Your valid key fob/card UID ---
-// From your debug output: FB A8 C9 06
-const byte allowedUID[] = { 0xFB, 0xA8, 0xC9, 0x06 };
+const byte allowedUID[] = { 0xFB, 0xA8, 0xC9, 0x06 }; // our card key 
 const byte allowedUIDLength = 4;
 
-// --- Servo angles ---
+
 const int LOCK_POS   = 0;    // 12 o'clock (locked)
 const int UNLOCK_POS = 90;   // 3 o'clock (unlocked)
 
 bool isUnlocked = false;
-unsigned long lastCardTime = 0;     // to avoid spamming reads
-const unsigned long cardCooldownMs = 500;  // 0.5s ignore after a read
+unsigned long lastCardTime = 0;     // prevent spamming
+const unsigned long cardCooldownMs = 500;  // 0.5s cool time
 
-// ------------------------------------------------------------------
-// Helper: compare card UID with allowedUID
-// ------------------------------------------------------------------
 bool isAllowedCard(const byte *uid, byte uidSize) {
   if (uidSize != allowedUIDLength) return false;
   for (byte i = 0; i < uidSize; i++) {
@@ -36,9 +31,6 @@ bool isAllowedCard(const byte *uid, byte uidSize) {
   return true;
 }
 
-// ------------------------------------------------------------------
-// Lock / unlock helpers
-// ------------------------------------------------------------------
 void lockDoor() {
   lockServo.write(LOCK_POS);
   isUnlocked = false;
@@ -49,55 +41,40 @@ void unlockDoor() {
   isUnlocked = true;
 }
 
-// ------------------------------------------------------------------
-// Setup
-// ------------------------------------------------------------------
 void setup() {
-  // UART to K64F (set same baud on K64F)
   Serial.begin(9600);
-
-  // RFID init
   SPI.begin();
   mfrc522.PCD_Init();
-
-  // Servo init
   lockServo.attach(SERVO_PIN);
   lockDoor();    // start locked
 }
 
-// ------------------------------------------------------------------
-// Main loop
-// ------------------------------------------------------------------
 void loop() {
 
-  // 1) Check for LOCK command from K64F
   if (Serial.available() > 0) {
     char cmd = Serial.read();
-    if (cmd == 'L') {      // 'L' means "lock now"
+    if (cmd == 'L') {     
       lockDoor();
     }
   }
 
-  // Simple cooldown so we don't re-trigger repeatedly with one tap
   if (millis() - lastCardTime < cardCooldownMs) {
     return;
   }
 
-  // 2) Check for new RFID card
   if (!mfrc522.PICC_IsNewCardPresent()) return;
   if (!mfrc522.PICC_ReadCardSerial())   return;
 
-  lastCardTime = millis();   // mark last successful read
+  lastCardTime = millis();   
 
   if (isAllowedCard(mfrc522.uid.uidByte, mfrc522.uid.size)) {
     if (!isUnlocked) {
-      // Go to UNLOCK state: move servo and tell K64F
       unlockDoor();
-      Serial.write('1');   // notify K64F to start countdown
+      Serial.write('1');   
     }
   }
 
-  // Halt communication with this card
+
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
 }
