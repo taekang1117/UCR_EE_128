@@ -2,24 +2,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define SYSTEM_CLOCK (48000000u)  
 
-#define SYSTEM_CLOCK (48000000u) // k64 is 48Mhz
-
-// ----- Servo on PTA1 using FTM0_CH6 -----
-#define SERVO_MIN_PULSE_TICKS  (375u)   // 1 ms at 48 MHz / 128
-#define SERVO_90_PULSE_TICKS   (563u)   // 1.5 ms at 48 MHz / 128
-#define SERVO_FTM_MOD          (7499u)  // 20 ms period at 48 MHz / 128 = 50k 
-
-char     uart_rx_char     = 0;
-uint8_t  uart_rx_flag     = 0;   
-
-uint8_t  buttonFlag       = 0;   
+// --- Button debug / flags ---
+uint8_t  buttonFlag       = 0;  
 uint8_t  btn_fall_flag    = 0;   
 uint32_t btn_fall_time_ms = 0;  
 uint32_t btn_fall_count   = 0;   
 
-uint32_t last_button_ms     = 0; // this is for debouncing
-uint32_t    BUTTON_DEBOUNCE_MS = 50;
+volatile uint32_t last_button_ms     = 0; // debounce
+const uint32_t    BUTTON_DEBOUNCE_MS = 50;
 
 // 7-segment display digit patterns 
 int nums[10] = {
@@ -55,13 +47,6 @@ AlarmState currentState = STATE_LOCKED;
 #define RED_LED_MASK    (1u << 7)   // PTD7
 #define GREEN_LED_MASK  (1u << 8)   // PTC8
 #define BUTTON_MASK     (1u << 2)   // PTB2
-
-// --- New UART + button IRQ globals ---
-volatile char     uart_rx_char       = 0;
-volatile uint8_t  uart_rx_flag       = 0;   // set when a new byte arrives
-
-volatile uint32_t last_button_ms     = 0;   // for debounce in IRQ
-const uint32_t    BUTTON_DEBOUNCE_MS = 50;  // 50 ms debounce
 
 // LED helpers
 static inline void red_on(void)    { GPIOD_PSOR = RED_LED_MASK; }
@@ -101,7 +86,7 @@ void SysTick_Handler(void)
     }
 }
 
-// ---------------- Button interrupt (PTB2, active low, FALLING EDGE) ----------------
+// ---------------- Button interrupt (PTB2, active low) ----------------
 void PORTB_IRQHandler(void)
 {
     uint32_t flags = PORTB_ISFR;
@@ -109,33 +94,20 @@ void PORTB_IRQHandler(void)
     if (flags & BUTTON_MASK) 
     {
         PORTB_ISFR = BUTTON_MASK;
-
         if ((GPIOB_PDIR & BUTTON_MASK) == 0) 
-        {  
+        {
             uint32_t now = msTicks;
-
-            // 3) Debounce using msTicks
-            if ((now - last_button_ms) >= BUTTON_DEBOUNCE_MS) {
+            if ((now - last_button_ms) >= BUTTON_DEBOUNCE_MS) 
+            {
                 last_button_ms = now;
-
-                buttonFlag = 1; 
-
+                buttonFlag = 1;      
+                
+                // 5) For debug:
                 btn_fall_flag    = 1;
                 btn_fall_time_ms = now;
                 btn_fall_count++;
             }
-      }
-}
-
-// UART1 ISR: RX interrupt-driven
-void UART1_RX_TX_IRQHandler(void)
-{
-    uint8_t status = UART1_S1;
-
-    if (status & UART_S1_RDRF_MASK) {
-        char c = UART1_D;       // reading D clears RDRF
-        uart_rx_char = c;
-        uart_rx_flag = 1;       // signal main loop
+        }
     }
 }
 
@@ -149,28 +121,16 @@ void init_uart1(uint32_t baudrate)
     PORTC_PCR3 = PORT_PCR_MUX(3);
     PORTC_PCR4 = PORT_PCR_MUX(3);
 
-    // Disable TX/RX before configuration
-    UART1_C2 &= ~(UART_C2_TE_MASK | UART_C2_RE_MASK);
+    UART1_C2 &= ~(UART_C2_TE_MASK | UART_C2_RE_MASK); // disable
 
     uint16_t sbr = (uint16_t)(SYSTEM_CLOCK / (16u * baudrate));
     UART1_BDH = (UART1_BDH & ~UART_BDH_SBR_MASK) | ((sbr >> 8) & UART_BDH_SBR_MASK);
     UART1_BDL = (uint8_t)(sbr & 0xFF);
 
-    UART1_C1 = 0x00; // 8N1, no parity
-
-    // Clear any status flags by dummy read
-    (void)UART1_S1;
-    (void)UART1_D;
-
-    // Enable TX, RX, and RX interrupt
-    UART1_C2 = UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK;
-
-    // Enable UART1 interrupt in NVIC
-    NVIC_ClearPendingIRQ(UART1_RX_TX_IRQn);
-    NVIC_EnableIRQ(UART1_RX_TX_IRQn);
+    UART1_C1 = 0x00; // 8N1
+    UART1_C2 = UART_C2_TE_MASK | UART_C2_RE_MASK; // enable
 }
 
-// Optional: still here if you want them, but not used in main logic
 int UART1_Available(void)
 {
     return (UART1_S1 & UART_S1_RDRF_MASK) != 0;
@@ -186,52 +146,6 @@ void UART1_PutChar(char c)
 {
     while (!(UART1_S1 & UART_S1_TDRE_MASK)) { }
     UART1_D = c;
-}
-
-// ---------------- Servo (PTA1, FTM0_CH6) ----------------
-void init_servo(void)
-{
-    // Enable clock for PORTA and FTM0
-    SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK;
-    SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK;
-
-    // Disable write protection for FTM0
-    FTM0_MODE |= FTM_MODE_WPDIS_MASK;
-
-    // PTA1 as FTM0_CH6 (ALT3)
-    PORTA_PCR1 = PORT_PCR_MUX(3);
-
-    // Disable FTM0 before configuration
-    FTM0_SC = 0;
-    FTM0_CNTIN = 0;
-    FTM0_CNT = 0;
-
-    // Set PWM period: 20 ms (50 Hz)
-    FTM0_MOD = SERVO_FTM_MOD;
-
-    // Edge-aligned PWM, high-true pulses on CH6:
-    // MSB:MSA = 10 (edge-aligned PWM)
-    // ELSB:ELSA = 10 (high-true pulses)
-    FTM0_C6SC = 0;
-    FTM0_C6SC = FTM_CnSC_MSB_MASK | FTM_CnSC_ELSB_MASK;
-
-    // Start at 0° (locked)
-    FTM0_C6V = SERVO_MIN_PULSE_TICKS;
-
-    // Select system clock, prescaler = 128
-    FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(7);
-}
-
-static inline void servo_set_locked(void)
-{
-    // 0 degrees -> ~1.0 ms pulse
-    FTM0_C6V = SERVO_MIN_PULSE_TICKS;
-}
-
-static inline void servo_set_unlocked(void)
-{
-    // 90 degrees -> ~1.5 ms pulse
-    FTM0_C6V = SERVO_90_PULSE_TICKS;
 }
 
 // ---------------- GPIO init ----------------
@@ -258,16 +172,14 @@ void init_gpio(void)
     GPIOC_PDDR |= GREEN_LED_MASK;
     GPIOC_PDOR &= ~GREEN_LED_MASK;
 
-    // Button PTB2, GPIO input, pull-up, FALLING-EDGE interrupt
+    // Button PTB2, GPIO input, pull-up, falling-edge interrupt
     PORTB_PCR2 = PORT_PCR_MUX(1)
-               | PORT_PCR_PE_MASK     // enable pull
-               | PORT_PCR_PS_MASK     // pull-up (so pin idles high)
-               | PORT_PCR_IRQC(0xA);  // 0xA = interrupt on falling edge
-
-    GPIOB_PDDR &= ~BUTTON_MASK;       // input
-    PORTB_ISFR = BUTTON_MASK;         // clear any pending flag
-    NVIC_ClearPendingIRQ(PORTB_IRQn);
-    NVIC_EnableIRQ(PORTB_IRQn);       // enable PORTB IRQ in NVIC
+               | PORT_PCR_PE_MASK
+               | PORT_PCR_PS_MASK
+               | PORT_PCR_IRQC(0xA); // falling edge
+    GPIOB_PDDR &= ~BUTTON_MASK;
+    PORTB_ISFR = BUTTON_MASK;
+    NVIC_EnableIRQ(PORTB_IRQn);
 }
 
 // ---------------- SysTick init ----------------
@@ -287,7 +199,6 @@ int main(void)
     init_gpio();
     init_uart1(9600);
     init_systick();
-    init_servo();
 
     // Start LOCKED: show 9, red ON, green OFF
     currentState      = STATE_LOCKED;
@@ -297,41 +208,33 @@ int main(void)
     displayFlag       = 1;
     timeoutFlag       = 0;
     buttonFlag        = 0;
-    uart_rx_flag      = 0;
 
     red_on();
     green_off();
-    servo_set_locked();
-    display_digit(9);
 
     while (1) {
 
-        // --- 1) UART: any byte '1' while LOCKED starts countdown (IRQ-driven) ---
-        if (currentState == STATE_LOCKED && uart_rx_flag) {
-            uart_rx_flag = 0;          // consume char
+        // --- 1) UART: any byte while LOCKED starts countdown ---
+        if (currentState == STATE_LOCKED && UART1_Available()) {
+            (void)UART1_GetChar();  // discard value, just acknowledge
+            currentState      = STATE_COUNTDOWN;
+            seconds_left      = 9;
+            countdown_ms      = 9000;      // 9 seconds
+            countdown_active  = 1;
+            displayFlag       = 1;
+            timeoutFlag       = 0;
 
-            if (uart_rx_char == '1') { // only react to '1'
-                currentState      = STATE_COUNTDOWN;
-                seconds_left      = 9;
-                countdown_ms      = 9000;      // 9 seconds
-                countdown_active  = 1;
-                displayFlag       = 1;
-                timeoutFlag       = 0;
-
-                red_off();
-                green_on();
-                servo_set_unlocked();
-            }
+            red_off();
+            green_on();
         }
 
-        // --- 2) Button pressed during COUNTDOWN (falling edge) ---
+        // --- 2) Button pressed during COUNTDOWN ---
         if (buttonFlag) {
             buttonFlag = 0;
 
             if (currentState == STATE_COUNTDOWN && seconds_left > 0) {
                 // Success: button pressed before timeout
-                UART1_PutChar('L');  // tell UNO: locked
-                // (Optional) flush RX here if needed
+                UART1_PutChar('3');  // tell UNO to lock servo
 
                 currentState      = STATE_LOCKED;
                 countdown_active  = 0;
@@ -341,7 +244,6 @@ int main(void)
 
                 red_on();
                 green_off();
-                servo_set_locked();
             }
         }
 
@@ -349,7 +251,7 @@ int main(void)
         if (timeoutFlag) {
             timeoutFlag = 0;
 
-            UART1_PutChar('L');  // time out: lock
+            UART1_PutChar('3');  // time out: lock
 
             currentState      = STATE_LOCKED;
             countdown_active  = 0;
@@ -359,7 +261,6 @@ int main(void)
 
             red_on();
             green_off();
-            servo_set_locked();
         }
 
         // --- 4) Update display when needed ---
