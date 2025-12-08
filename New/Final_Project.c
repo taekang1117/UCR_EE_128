@@ -2,12 +2,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SYSTEM_CLOCK (48000000u)
+
+#define SYSTEM_CLOCK (48000000u) // k64 is 48Mhz
 
 // ----- Servo on PTA1 using FTM0_CH6 -----
-#define SERVO_MIN_PULSE_TICKS  (375u)   // ~1.0 ms at 48 MHz / 128
-#define SERVO_90_PULSE_TICKS   (563u)   // ~1.5 ms at 48 MHz / 128
-#define SERVO_FTM_MOD          (7499u)  // 20 ms period (50 Hz) at 48 MHz / 128
+#define SERVO_MIN_PULSE_TICKS  (375u)   // 1 ms at 48 MHz / 128
+#define SERVO_90_PULSE_TICKS   (563u)   // 1.5 ms at 48 MHz / 128
+#define SERVO_FTM_MOD          (7499u)  // 20 ms period at 48 MHz / 128 = 50k 
 
 char     uart_rx_char     = 0;
 uint8_t  uart_rx_flag     = 0;   
@@ -17,7 +18,7 @@ uint8_t  btn_fall_flag    = 0;
 uint32_t btn_fall_time_ms = 0;  
 uint32_t btn_fall_count   = 0;   
 
-uint32_t last_button_ms     = 0; // debounce
+uint32_t last_button_ms     = 0; // this is for debouncing
 uint32_t    BUTTON_DEBOUNCE_MS = 50;
 
 
