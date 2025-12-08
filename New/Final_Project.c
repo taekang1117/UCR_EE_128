@@ -5,15 +5,14 @@
 #define SYSTEM_CLOCK (48000000u)  // 48 MHZ
 
 // for button interrupt and debouncing
-uint8_t  buttonFlag       = 0;  
-uint8_t  btn_fall_flag    = 0;   
-uint32_t btn_fall_time_ms = 0;  
-uint32_t btn_fall_count   = 0;   
+uint8_t  btn_fall_flag    = 0;
+uint32_t btn_fall_time_ms = 0;
+uint32_t btn_fall_count   = 0;
 
 volatile uint32_t last_button_ms     = 0; // debounce
 const uint32_t    BUTTON_DEBOUNCE_MS = 50;
 
-// 7 segment dijsplay 
+// 7 segment dijsplay
 int nums[10] = {
     0b1111110, // 0
     0b0110000, // 1
@@ -34,7 +33,7 @@ typedef enum {
     STATE_COUNTDOWN
 } AlarmState;
 
-// global variables 
+// global variables
 volatile uint32_t msTicks       = 0;
 volatile uint32_t countdown_ms  = 0;
 volatile uint8_t  seconds_left  = 9;
@@ -66,7 +65,7 @@ void display_digit(uint8_t digit)
     GPIOD_PDOR = current | pattern;
 }
 
-// sys tick 1ms 
+// sys tick 1ms
 void SysTick_Handler(void)
 {
     msTicks++;
@@ -89,21 +88,21 @@ void SysTick_Handler(void)
 }
 
 
-// button interrupt 
+// button interrupt
 void PORTB_IRQHandler(void)
 {
     uint32_t flags = PORTB_ISFR;
 
-    if (flags & BUTTON_MASK) 
+    if (flags & BUTTON_MASK)
     {
         PORTB_ISFR = BUTTON_MASK;
-        if ((GPIOB_PDIR & BUTTON_MASK) == 0) 
+        if ((GPIOB_PDIR & BUTTON_MASK) == 0)
         {
             uint32_t now = msTicks;
-            if ((now - last_button_ms) >= BUTTON_DEBOUNCE_MS) 
+            if ((now - last_button_ms) >= BUTTON_DEBOUNCE_MS)
             {
                 last_button_ms = now;
-                buttonFlag = 1;      
+                buttonFlag = 1;
                 btn_fall_flag    = 1;
                 btn_fall_time_ms = now;
                 btn_fall_count++;
@@ -166,7 +165,7 @@ void init_gpio(void)
     PORTD_PCR6 = PORT_PCR_MUX(1);
     PORTD_PCR7 = PORT_PCR_MUX(1);
     GPIOD_PDDR |= 0xFF;
-    GPIOD_PDOR &= ~0xFF;   // start from low 
+    GPIOD_PDOR &= ~0xFF;   // start from low
 
     // Green LED on PTC8
     PORTC_PCR8 = PORT_PCR_MUX(1);
@@ -213,7 +212,7 @@ int main(void)
 
     while (1) {
 
-        // UART: any byte while LOCKED starts countdown 
+        // UART: any byte while LOCKED starts countdown
         if (currentState == STATE_LOCKED && UART1_Available()) {
             (void)UART1_GetChar();  // garbage value
             currentState      = STATE_COUNTDOWN;
@@ -261,7 +260,7 @@ int main(void)
             green_off();
         }
 
-        // update display 
+        // update display
         if (displayFlag) {
             displayFlag = 0;
             display_digit(seconds_left % 10);
